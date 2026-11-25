@@ -114,12 +114,24 @@ public final class GboardCustomStickersStore {
         }
     }
 
+    // Parsed index and the file stamp it came from; Packs are immutable, so sharing is safe.
+    private static List<Pack> cachedPacks;
+    private static String cachedStamp;
+
     public static synchronized List<Pack> load(Context context) {
         File index = indexFile(context);
         if (!index.isFile()) return Collections.emptyList();
+        // shortcut: the stamp misses a same-size rewrite within the file system's mtime
+        // granularity from another process; in-process writes refresh the cache directly.
+        String stamp = index.lastModified() + ":" + index.length();
+        if (stamp.equals(cachedStamp)) return cachedPacks;
         try {
             byte[] bytes = new AtomicFile(index).readFully();
-            return fromJson(new String(bytes, StandardCharsets.UTF_8));
+            List<Pack> packs = Collections.unmodifiableList(
+                    fromJson(new String(bytes, StandardCharsets.UTF_8)));
+            cachedPacks = packs;
+            cachedStamp = stamp;
+            return packs;
         } catch (IOException | JSONException ignored) {
             return Collections.emptyList();
         }
@@ -281,27 +293,67 @@ public final class GboardCustomStickersStore {
         }
     }
 
+    /** Decoded pixels of a source image, optionally after background removal. */
+    private static final class Stage {
+        final String key;
+        final int[] pixels;
+        final int width;
+        final int height;
+        final boolean backgroundNotFound;
+
+        Stage(String key, int[] pixels, int width, int height, boolean backgroundNotFound) {
+            this.key = key;
+            this.pixels = pixels;
+            this.width = width;
+            this.height = height;
+            this.backgroundNotFound = backgroundNotFound;
+        }
+    }
+
+    private static final Object STAGE_LOCK = new Object();
+    // One decoded source and one background-removal result: dragging the corner or outline
+    // slider re-renders without decoding the file or repeating the flood fill.
+    private static Stage sourceStage;
+    private static Stage backgroundStage;
+
+    private static Stage stage(File file, int tolerance) throws IOException {
+        String sourceKey = file.getPath() + "@" + file.lastModified() + ":" + file.length();
+        synchronized (STAGE_LOCK) {
+            if (sourceStage == null || !sourceStage.key.equals(sourceKey)) {
+                BitmapFactory.Options options = new BitmapFactory.Options();
+                options.inPreferredConfig = Bitmap.Config.ARGB_8888;
+                Bitmap source = BitmapFactory.decodeFile(file.getPath(), options);
+                if (source == null) throw new IOException("Sticker could not be decoded");
+                int width = source.getWidth();
+                int height = source.getHeight();
+                int[] pixels = new int[width * height];
+                source.getPixels(pixels, 0, width, 0, 0, width, height);
+                source.recycle();
+                sourceStage = new Stage(sourceKey, pixels, width, height, false);
+                backgroundStage = null;
+            }
+            if (tolerance <= 0) return sourceStage;
+            String backgroundKey = sourceKey + "#" + tolerance;
+            if (backgroundStage == null || !backgroundStage.key.equals(backgroundKey)) {
+                int[] pixels = sourceStage.pixels.clone();
+                int removed = GboardCustomStickersBackgroundRemover.remove(
+                        pixels, sourceStage.width, sourceStage.height, tolerance);
+                boolean notFound = removed == 0 || removed == pixels.length;
+                backgroundStage = new Stage(backgroundKey, notFound ? sourceStage.pixels : pixels,
+                        sourceStage.width, sourceStage.height, notFound);
+            }
+            return backgroundStage;
+        }
+    }
+
     /** Applies the edits to a sticker file; used for both the live preview and saving. */
     public static Rendered render(File file, Edits edits) throws IOException {
-        BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inPreferredConfig = Bitmap.Config.ARGB_8888;
-        Bitmap source = BitmapFactory.decodeFile(file.getPath(), options);
-        if (source == null) throw new IOException("Sticker could not be decoded");
-        int width = source.getWidth();
-        int height = source.getHeight();
-        int[] pixels = new int[width * height];
-        source.getPixels(pixels, 0, width, 0, 0, width, height);
-        source.recycle();
-        boolean backgroundNotFound = false;
-        if (edits.backgroundTolerance > 0) {
-            int[] original = pixels.clone();
-            int removed = GboardCustomStickersBackgroundRemover.remove(
-                    pixels, width, height, edits.backgroundTolerance);
-            if (removed == 0 || removed == pixels.length) {
-                pixels = original;
-                backgroundNotFound = true;
-            }
-        }
+        Stage stage = stage(file, edits.backgroundTolerance);
+        int width = stage.width;
+        int height = stage.height;
+        // Later steps edit in place; the cached stage must stay untouched.
+        int[] pixels = stage.pixels.clone();
+        boolean backgroundNotFound = stage.backgroundNotFound;
         // Drop empty transparent margins so the content fills the sticker after scaling below.
         int[] bounds = GboardCustomStickersBackgroundRemover.visibleBounds(pixels, width, height);
         if (bounds != null && (bounds[2] - bounds[0] < width || bounds[3] - bounds[1] < height)) {
@@ -441,28 +493,30 @@ public final class GboardCustomStickersStore {
     }
 
     /** A zip with {@code pack.json} and every shown and original image of the pack. */
-    public static synchronized byte[] exportPack(Context context, String packId)
+    public static void exportPack(Context context, String packId, java.io.OutputStream output)
             throws IOException {
         Pack pack = findPack(context, packId);
         if (pack == null) throw new IOException("Unknown sticker pack");
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
-        try (ZipOutputStream zip = new ZipOutputStream(output)) {
+        // Streamed file by file so a large pack never sits in memory at once.
+        ZipOutputStream zip = new ZipOutputStream(output);
+        try {
             zip.putNextEntry(new ZipEntry(ARCHIVE_INDEX));
             zip.write(toJson(Collections.singletonList(pack)).getBytes(StandardCharsets.UTF_8));
             zip.closeEntry();
-            java.util.Set<String> files = new java.util.LinkedHashSet<>(pack.stickers);
-            for (Edited record : pack.edited.values()) files.add(record.source);
-            for (String file : files) {
-                File image = stickerFile(context, packId, file);
-                if (!image.isFile()) continue;
-                zip.putNextEntry(new ZipEntry(file));
-                zip.write(java.nio.file.Files.readAllBytes(image.toPath()));
-                zip.closeEntry();
-            }
         } catch (JSONException failure) {
             throw new IOException("Sticker pack could not be exported", failure);
         }
-        return output.toByteArray();
+        java.util.Set<String> files = new java.util.LinkedHashSet<>(pack.stickers);
+        for (Edited record : pack.edited.values()) files.add(record.source);
+        for (String file : files) {
+            File image = stickerFile(context, packId, file);
+            if (!image.isFile()) continue;
+            zip.putNextEntry(new ZipEntry(file));
+            java.nio.file.Files.copy(image.toPath(), zip);
+            zip.closeEntry();
+        }
+        // The caller owns and closes the output stream.
+        zip.finish();
     }
 
     /**
@@ -471,65 +525,72 @@ public final class GboardCustomStickersStore {
      */
     public static synchronized Pack importPack(Context context, byte[] archive)
             throws IOException {
-        String json = null;
-        Map<String, byte[]> images = new LinkedHashMap<>();
-        long total = 0;
-        int entries = 0;
-        try (ZipInputStream zip = new ZipInputStream(new java.io.ByteArrayInputStream(archive))) {
-            ZipEntry entry;
-            while ((entry = zip.getNextEntry()) != null) {
-                if (++entries > MAX_ARCHIVE_ENTRIES) throw new IOException("Too many entries");
-                if (entry.isDirectory()) continue;
-                byte[] bytes = readLimited(zip, MAX_ARCHIVE_ENTRY_BYTES);
-                total += bytes.length;
-                if (total > MAX_ARCHIVE_BYTES) throw new IOException("Archive is too large");
-                String name = entry.getName();
-                if (ARCHIVE_INDEX.equals(name)) {
-                    json = new String(bytes, StandardCharsets.UTF_8);
-                } else if (STICKER_FILE.matcher(name).matches() && isStickerImage(bytes)) {
-                    images.put(name, bytes);
-                }
-            }
-        }
-        if (json == null) throw new IOException("Not a sticker pack");
-        Pack exported;
-        try {
-            List<Pack> parsed = fromJson(json);
-            if (parsed.isEmpty()) throw new IOException("Not a sticker pack");
-            exported = parsed.get(0);
-        } catch (JSONException failure) {
-            throw new IOException("Not a sticker pack", failure);
-        }
-        List<String> stickers = new ArrayList<>();
-        for (String sticker : exported.stickers) {
-            if (images.containsKey(sticker)) stickers.add(sticker);
-        }
-        Map<String, Edited> edited = new LinkedHashMap<>();
-        for (Map.Entry<String, Edited> record : exported.edited.entrySet()) {
-            if (images.containsKey(record.getValue().source)) {
-                edited.put(record.getKey(), record.getValue());
-            }
-        }
-        Pack pack = new Pack(newId(), exported.name, stickers, exported.cover, edited,
-                exported.defaults);
-        File directory = packDirectory(context, pack.id);
+        String packId = newId();
+        File directory = packDirectory(context, packId);
         try {
             if (!directory.mkdirs()) throw new IOException("Sticker folder could not be created");
-            java.util.Set<String> needed = new java.util.HashSet<>(stickers);
-            for (Edited record : edited.values()) needed.add(record.source);
-            for (String file : needed) {
-                try (FileOutputStream output = new FileOutputStream(new File(directory, file))) {
-                    output.write(images.get(file));
+            // Images go straight to the new pack folder, so only one entry is held at a time.
+            String json = null;
+            java.util.Set<String> images = new java.util.HashSet<>();
+            long total = 0;
+            int entries = 0;
+            try (ZipInputStream zip =
+                         new ZipInputStream(new java.io.ByteArrayInputStream(archive))) {
+                ZipEntry entry;
+                while ((entry = zip.getNextEntry()) != null) {
+                    if (++entries > MAX_ARCHIVE_ENTRIES) throw new IOException("Too many entries");
+                    if (entry.isDirectory()) continue;
+                    byte[] bytes = readLimited(zip, MAX_ARCHIVE_ENTRY_BYTES);
+                    total += bytes.length;
+                    if (total > MAX_ARCHIVE_BYTES) throw new IOException("Archive is too large");
+                    String name = entry.getName();
+                    if (ARCHIVE_INDEX.equals(name)) {
+                        json = new String(bytes, StandardCharsets.UTF_8);
+                    } else if (STICKER_FILE.matcher(name).matches() && isStickerImage(bytes)
+                            && images.add(name)) {
+                        try (FileOutputStream output =
+                                     new FileOutputStream(new File(directory, name))) {
+                            output.write(bytes);
+                        }
+                    }
                 }
+            }
+            if (json == null) throw new IOException("Not a sticker pack");
+            Pack exported;
+            try {
+                List<Pack> parsed = fromJson(json);
+                if (parsed.isEmpty()) throw new IOException("Not a sticker pack");
+                exported = parsed.get(0);
+            } catch (JSONException failure) {
+                throw new IOException("Not a sticker pack", failure);
+            }
+            List<String> stickers = new ArrayList<>();
+            for (String sticker : exported.stickers) {
+                if (images.contains(sticker)) stickers.add(sticker);
+            }
+            Map<String, Edited> edited = new LinkedHashMap<>();
+            for (Map.Entry<String, Edited> record : exported.edited.entrySet()) {
+                if (images.contains(record.getValue().source)) {
+                    edited.put(record.getKey(), record.getValue());
+                }
+            }
+            Pack pack = new Pack(packId, exported.name, stickers, exported.cover, edited,
+                    exported.defaults);
+            // Drop images the index does not reference.
+            java.util.Set<String> needed = new java.util.HashSet<>(pack.stickers);
+            for (Edited record : pack.edited.values()) needed.add(record.source);
+            for (String image : images) {
+                //noinspection ResultOfMethodCallIgnored
+                if (!needed.contains(image)) new File(directory, image).delete();
             }
             List<Pack> packs = new ArrayList<>(load(context));
             packs.add(pack);
             save(context, packs);
+            return pack;
         } catch (IOException | RuntimeException failure) {
             deleteRecursively(directory);
             throw failure;
         }
-        return pack;
     }
 
     private static byte[] readLimited(java.io.InputStream input, int limit) throws IOException {
@@ -655,8 +716,12 @@ public final class GboardCustomStickersStore {
             file.finishWrite(output);
         } catch (IOException | JSONException | RuntimeException failure) {
             file.failWrite(output);
+            cachedStamp = null;
             throw new IOException("Sticker packs could not be saved", failure);
         }
+        File index = indexFile(context);
+        cachedPacks = Collections.unmodifiableList(new ArrayList<>(packs));
+        cachedStamp = index.lastModified() + ":" + index.length();
     }
 
     private static int indexOf(List<Pack> packs, String packId) throws IOException {

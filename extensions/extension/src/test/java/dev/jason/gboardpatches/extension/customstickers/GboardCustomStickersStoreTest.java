@@ -159,8 +159,10 @@ public class GboardCustomStickersStoreTest {
         GboardCustomStickersStore.moveStickers(context, pack.id, List.of(last), 0);
         assertEquals(last, GboardCustomStickersStore.findPack(context, pack.id).stickers.get(0));
 
-        GboardCustomStickersStore.Pack imported = GboardCustomStickersStore.importPack(
-                context, GboardCustomStickersStore.exportPack(context, pack.id));
+        ByteArrayOutputStream archive = new ByteArrayOutputStream();
+        GboardCustomStickersStore.exportPack(context, pack.id, archive);
+        GboardCustomStickersStore.Pack imported =
+                GboardCustomStickersStore.importPack(context, archive.toByteArray());
         assertNotEquals(pack.id, imported.id);
         assertEquals("Mine", imported.name);
         assertEquals(GboardCustomStickersStore.findPack(context, pack.id).stickers,

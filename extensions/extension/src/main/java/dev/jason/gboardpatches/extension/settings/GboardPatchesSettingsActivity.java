@@ -132,6 +132,7 @@ public final class GboardPatchesSettingsActivity extends Activity
     private static final int REQUEST_CREATE_BINARY_DOCUMENT = 0x4748;
     private static final int REQUEST_OPEN_BINARY_DOCUMENT = 0x4749;
     private static final int REQUEST_OPEN_BINARY_DOCUMENTS = 0x474A;
+    private static final int REQUEST_CREATE_STREAM_DOCUMENT = 0x474B;
     private static final int TOOLBAR_HEIGHT_DP = 56;
     private static final int TOOLBAR_SCROLLED_THRESHOLD_DP = 24;
     private static final long TOOLBAR_SCROLL_TRANSITION_MS = 200L;
@@ -243,6 +244,8 @@ public final class GboardPatchesSettingsActivity extends Activity
     private GboardPatchesSettingsContract.BinaryDocumentConsumer pendingBinaryDocumentsReader;
     private Runnable pendingBinaryDocumentsCompletion;
     private int pendingBinaryDocumentsLimit;
+    private GboardPatchesSettingsContract.StreamWriter pendingStreamWriter;
+    private Runnable pendingStreamCompletion;
     private GboardPatchesSettingsContract.StringValueConsumer pendingDocumentTreeConsumer;
     private GboardPatchesSettingsContract.Feature lifecycleVisibleFeature;
     private boolean featureLifecycleEnabled;
@@ -1267,6 +1270,58 @@ public final class GboardPatchesSettingsActivity extends Activity
 
     @Override
     @SuppressWarnings("deprecation")
+    public void createStreamDocument(String fileName, String mimeType,
+            GboardPatchesSettingsContract.StreamWriter writer, Runnable completionAction) {
+        if (writer == null) return;
+        pendingStreamWriter = writer;
+        pendingStreamCompletion = completionAction;
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT)
+                .addCategory(Intent.CATEGORY_OPENABLE)
+                .addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                .setType(normalizeMimeType(mimeType));
+        if (fileName != null && !fileName.isBlank()) {
+            intent.putExtra(Intent.EXTRA_TITLE, GboardExportFileNames.timestamped(fileName.trim()));
+        }
+        try {
+            startActivityForResult(intent, REQUEST_CREATE_STREAM_DOCUMENT);
+        } catch (Throwable throwable) {
+            pendingStreamWriter = null;
+            pendingStreamCompletion = null;
+            Log.w(TAG, "Failed to launch stream document create picker", throwable);
+            Toast.makeText(this, DOCUMENT_PICKER_FAILED, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void handleCreateStreamDocumentResult(int resultCode, Intent data) {
+        GboardPatchesSettingsContract.StreamWriter writer = pendingStreamWriter;
+        Runnable completion = pendingStreamCompletion;
+        pendingStreamWriter = null;
+        pendingStreamCompletion = null;
+        if (resultCode != RESULT_OK || data == null || data.getData() == null || writer == null) {
+            return;
+        }
+        Uri uri = data.getData();
+        Runnable write = () -> {
+            try (OutputStream output = getContentResolver().openOutputStream(uri, "wt")) {
+                if (output == null) throw new java.io.IOException("No output stream");
+                writer.write(output);
+                output.flush();
+                if (completion != null) completion.run();
+            } catch (Throwable throwable) {
+                Log.w(TAG, "Failed to write selected stream document", throwable);
+                runOnUiThread(() -> Toast.makeText(
+                        this, DOCUMENT_WRITE_FAILED, Toast.LENGTH_SHORT).show());
+            }
+        };
+        try {
+            if (!isFinishing() && !isDestroyed()) boundedDocumentExecutor.execute(write);
+        } catch (Throwable failure) {
+            Log.w(TAG, "Failed to start stream document write", failure);
+        }
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
     public void openBinaryDocument(String[] mimeTypes,
             GboardPatchesSettingsContract.BinaryDocumentConsumer documentConsumer) {
         openBinaryDocument(mimeTypes, Integer.MAX_VALUE, documentConsumer);
@@ -1495,6 +1550,10 @@ public final class GboardPatchesSettingsActivity extends Activity
         }
         if (requestCode == REQUEST_OPEN_BINARY_DOCUMENTS) {
             handleOpenBinaryDocumentsResult(resultCode, data);
+            return;
+        }
+        if (requestCode == REQUEST_CREATE_STREAM_DOCUMENT) {
+            handleCreateStreamDocumentResult(resultCode, data);
         }
     }
 

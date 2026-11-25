@@ -441,23 +441,71 @@ final class GboardCustomStickersViews {
     }
 
     /** Decodes off the UI thread; a detached view simply ignores late posts. */
-    /** {@code photoBadges}, when given, are shown for thumbnails without any transparency. */
+    private static final class Thumbnail {
+        final Bitmap bitmap;
+        final boolean transparent;
+
+        Thumbnail(Bitmap bitmap, boolean transparent) {
+            this.bitmap = bitmap;
+            this.transparent = transparent;
+        }
+    }
+
+    // Screens are rebuilt on every refresh (each tap while selecting, each drag), so decoded
+    // thumbnails are kept by file path and modification time. An eighth of the heap at most.
+    private static final android.util.LruCache<String, Thumbnail> THUMBNAILS =
+            new android.util.LruCache<String, Thumbnail>(
+                    (int) Math.min(Integer.MAX_VALUE, Runtime.getRuntime().maxMemory() / 8)) {
+                @Override
+                protected int sizeOf(String key, Thumbnail value) {
+                    return value.bitmap.getByteCount();
+                }
+            };
+    private static final ExecutorService THUMBNAIL_LOADER = Executors.newSingleThreadExecutor(
+            runnable -> {
+                Thread thread = new Thread(runnable, "GboardStickerThumbs");
+                thread.setDaemon(true);
+                return thread;
+            });
+
+    /**
+     * Cached thumbnails are set at once; the rest decode off the UI thread. {@code photoBadges},
+     * when given, are shown for thumbnails without any transparency.
+     */
     private static void loadThumbnails(List<ImageView> images, List<File> files,
             List<View> photoBadges) {
-        if (images.isEmpty()) return;
-        new Thread(() -> {
-            for (int i = 0; i < files.size(); i++) {
-                Bitmap bitmap = decodeThumbnail(files.get(i));
-                ImageView image = images.get(i);
-                if (bitmap == null) continue;
-                View photo = photoBadges == null ? null : photoBadges.get(i);
-                boolean opaque = photo != null && !hasTransparency(bitmap);
-                image.post(() -> {
-                    image.setImageBitmap(bitmap);
-                    if (opaque) photo.setVisibility(View.VISIBLE);
-                });
+        List<Integer> missing = new ArrayList<>();
+        for (int i = 0; i < files.size(); i++) {
+            Thumbnail cached = THUMBNAILS.get(thumbnailKey(files.get(i)));
+            if (cached == null) {
+                missing.add(i);
+            } else {
+                showThumbnail(images.get(i), photoBadges == null ? null : photoBadges.get(i),
+                        cached);
             }
-        }, "GboardStickerThumbs").start();
+        }
+        if (missing.isEmpty()) return;
+        THUMBNAIL_LOADER.execute(() -> {
+            for (int i : missing) {
+                File file = files.get(i);
+                Bitmap bitmap = decodeThumbnail(file);
+                if (bitmap == null) continue;
+                Thumbnail thumbnail = new Thumbnail(bitmap, hasTransparency(bitmap));
+                THUMBNAILS.put(thumbnailKey(file), thumbnail);
+                ImageView image = images.get(i);
+                View photo = photoBadges == null ? null : photoBadges.get(i);
+                image.post(() -> showThumbnail(image, photo, thumbnail));
+            }
+        });
+    }
+
+    private static String thumbnailKey(File file) {
+        return file.getPath() + "@" + file.lastModified();
+    }
+
+    private static void showThumbnail(ImageView image, View photo, Thumbnail thumbnail) {
+        image.setImageBitmap(thumbnail.bitmap);
+        if (photo != null) photo.setVisibility(thumbnail.transparent ? View.GONE : View.VISIBLE);
     }
 
     /** Messenger shows a sticker image as a plain photo unless some of it is transparent. */

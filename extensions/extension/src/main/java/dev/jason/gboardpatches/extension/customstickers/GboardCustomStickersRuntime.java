@@ -27,9 +27,7 @@ public final class GboardCustomStickersRuntime {
      */
     public static Boolean isShownInKeyboard(Context context, String packId) {
         try {
-            Object store = favoritesStore(context);
-            return ((List<?>) store.getClass().getMethod("b").invoke(store))
-                    .contains(PACK_ID_PREFIX + packId);
+            return favorites(context).contains(PACK_ID_PREFIX + packId);
         } catch (Throwable failure) {
             Log.w(TAG, "Failed to read Gboard sticker favorites", failure);
             return null;
@@ -39,13 +37,10 @@ public final class GboardCustomStickersRuntime {
     /** Adds the pack to the front of Gboard's added packs, or removes it. */
     public static boolean setShownInKeyboard(Context context, String packId, boolean shown) {
         try {
-            Object store = favoritesStore(context);
+            Favorites favorites = favorites(context);
             // The store notifies its listeners even when nothing changes, so skip no-ops.
-            boolean current = ((List<?>) store.getClass().getMethod("b").invoke(store))
-                    .contains(PACK_ID_PREFIX + packId);
-            if (current != shown) {
-                store.getClass().getMethod("c", String.class, boolean.class, boolean.class)
-                        .invoke(store, PACK_ID_PREFIX + packId, shown, true);
+            if (favorites.contains(PACK_ID_PREFIX + packId) != shown) {
+                favorites.update.invoke(favorites.store, PACK_ID_PREFIX + packId, shown, true);
             }
             return true;
         } catch (Throwable failure) {
@@ -54,19 +49,42 @@ public final class GboardCustomStickersRuntime {
         }
     }
 
+    private static final class Favorites {
+        final Object store;
+        final Method list;
+        final Method update;
+
+        Favorites(Object store) throws NoSuchMethodException {
+            this.store = store;
+            list = store.getClass().getMethod("b");
+            update = store.getClass().getMethod("c", String.class, boolean.class, boolean.class);
+        }
+
+        boolean contains(String id) throws ReflectiveOperationException {
+            return ((List<?>) list.invoke(store)).contains(id);
+        }
+    }
+
+    private static volatile Favorites cachedFavorites;
+
     /**
      * shortcut: obfuscated Gboard 18.5.4 path gzx.b(ctx).get().d.h = the in-memory favorites
      * store (ikn over exp_sticker_prefs "favorites"); move to version bindings when porting.
-     * Settings and the keyboard share this process, so both see the same instance.
+     * Settings and the keyboard share this process, and the store hangs off the gzx singleton,
+     * so one lookup is reused for the life of the process.
      */
-    private static Object favoritesStore(Context context) throws ReflectiveOperationException {
+    private static Favorites favorites(Context context) throws ReflectiveOperationException {
+        Favorites favorites = cachedFavorites;
+        if (favorites != null) return favorites;
         ClassLoader loader = GboardCustomStickersRuntime.class.getClassLoader();
         Class<?> supplierType = Class.forName("gzx", false, loader);
         Object supplier = supplierType.getMethod("b", Context.class)
                 .invoke(null, context.getApplicationContext());
         Object client = supplierType.getMethod("get").invoke(supplier);
         Object stickerClient = client.getClass().getField("d").get(client);
-        return stickerClient.getClass().getField("h").get(stickerClient);
+        favorites = new Favorites(stickerClient.getClass().getField("h").get(stickerClient));
+        cachedFavorites = favorites;
+        return favorites;
     }
 
     /** Patched in before the sticker pack parser returns its ImmutableList of packs. */

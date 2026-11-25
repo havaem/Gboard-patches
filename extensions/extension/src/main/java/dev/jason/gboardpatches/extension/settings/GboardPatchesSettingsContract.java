@@ -140,6 +140,12 @@ public final class GboardPatchesSettingsContract {
             throw new UnsupportedOperationException("Binary document export is unavailable");
         }
 
+        /** Large export: {@code writer} streams into the picked file on a worker thread. */
+        default void createStreamDocument(String fileName, String mimeType, StreamWriter writer,
+                Runnable completionAction) {
+            throw new UnsupportedOperationException("Stream document export is unavailable");
+        }
+
         default void openBinaryDocument(String[] mimeTypes,
                 BinaryDocumentConsumer documentConsumer) {
             throw new UnsupportedOperationException("Binary document import is unavailable");
@@ -266,6 +272,16 @@ public final class GboardPatchesSettingsContract {
             byte[] data, Runnable completionAction) {
         submit(host, adapter ->
                 adapter.createBinaryDocument(fileName, mimeType, data, completionAction));
+    }
+
+    public static void createStreamDocument(FeatureHost host, String fileName, String mimeType,
+            StreamWriter writer, Runnable completionAction) {
+        submit(host, adapter ->
+                adapter.createStreamDocument(fileName, mimeType, writer, completionAction));
+    }
+
+    public interface StreamWriter {
+        void write(java.io.OutputStream output) throws java.io.IOException;
     }
 
     public static void openBinaryDocument(FeatureHost host, String[] mimeTypes,
