@@ -108,6 +108,12 @@ Import custom ZIP themes and beautiful themes from the official Rboard repositor
 </details>
 
 <details>
+  <summary><code>Custom Stickers</code></summary>
+
+  Create your own sticker packs from PNG, WebP, JPEG, or GIF images and use them in Gboard's Stickers tab alongside the official packs.
+</details>
+
+<details>
   <summary><code>Simple Calculator</code></summary>
 
   Adds an optional inline calculator for arithmetic expressions typed in any text field. The result appears in Gboard's suggestion row; tap it to replace the expression, or long-press it to copy the result.

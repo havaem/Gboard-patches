@@ -971,4 +971,27 @@
     <string name="gboard_clipboard_select_all_toggle">編輯時新增全選按鈕</string>
     <string name="gboard_clipboard_select_all_summary">一次勾選多筆剪貼簿項目，再按刪除鍵一起刪除。</string>
     <string name="gboard_clipboard_exclude_pinned">排除釘選</string>
+    <string name="gboard_patches_custom_stickers_title">自訂貼圖</string>
+    <string name="gboard_patches_custom_stickers_summary">建立貼圖包，並在 Gboard 的貼圖分頁中使用。</string>
+    <string name="gboard_patches_custom_stickers_error_title">無法使用自訂貼圖</string>
+    <string name="gboard_patches_custom_stickers_error_summary">貼圖包畫面載入失敗。請重新開啟 Gboard 設定後再試一次。</string>
+    <string name="gboard_patches_custom_stickers_section_packs">貼圖包</string>
+    <string name="gboard_patches_custom_stickers_empty">尚未建立貼圖包</string>
+    <string name="gboard_patches_custom_stickers_sticker_count">%1$d 張貼圖</string>
+    <string name="gboard_patches_custom_stickers_create">建立貼圖包</string>
+    <string name="gboard_patches_custom_stickers_name_hint">貼圖包名稱</string>
+    <string name="gboard_patches_custom_stickers_usage_title">使用方式</string>
+    <string name="gboard_patches_custom_stickers_usage_summary">開啟 Gboard 的貼圖分頁。如果沒看到貼圖包，請從「管理貼圖」加入。沒有貼圖的貼圖包會被隱藏。</string>
+    <string name="gboard_patches_custom_stickers_section_stickers">貼圖</string>
+    <string name="gboard_patches_custom_stickers_add">新增貼圖</string>
+    <string name="gboard_patches_custom_stickers_add_summary">PNG、WebP、JPEG 或 GIF，最大 8 MB。GIF 會儲存為靜態圖片。</string>
+    <string name="gboard_patches_custom_stickers_rename">重新命名貼圖包</string>
+    <string name="gboard_patches_custom_stickers_delete_pack">刪除貼圖包</string>
+    <string name="gboard_patches_custom_stickers_delete_pack_confirm">要刪除這個貼圖包和其中所有貼圖嗎？</string>
+    <string name="gboard_patches_custom_stickers_sticker_item">貼圖 %1$d</string>
+    <string name="gboard_patches_custom_stickers_delete_sticker_confirm">要刪除這張貼圖嗎？</string>
+    <string name="gboard_patches_custom_stickers_added">已新增貼圖。</string>
+    <string name="gboard_patches_custom_stickers_add_failed">無法新增這張圖片。</string>
+    <string name="gboard_patches_custom_stickers_save_failed">無法儲存變更。</string>
+    <string name="gboard_patches_custom_stickers_pack_missing">這個貼圖包已不存在。</string>
 </resources>

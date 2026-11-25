@@ -38,6 +38,8 @@ import dev.jason.gboardpatches.patches.gboard.features.closeproactivesuggestions
 import dev.jason.gboardpatches.patches.gboard.features.developeroptions.gboardDeveloperOptionsFeatureMarkerPatch
 import dev.jason.gboardpatches.patches.gboard.features.cursortrackpad.gboardCursorTrackpadFeatureMarkerPatch
 import dev.jason.gboardpatches.patches.gboard.features.cursortrackpad.gboardCursorTrackpadFlagValuePatch
+import dev.jason.gboardpatches.patches.gboard.features.customstickers.gboardCustomStickersFeatureMarkerPatch
+import dev.jason.gboardpatches.patches.gboard.features.customstickers.gboardCustomStickersPackListPatch
 import dev.jason.gboardpatches.patches.gboard.features.customtheme.gboardCustomThemeAssetsPatch
 import dev.jason.gboardpatches.patches.gboard.features.customtheme.gboardCustomThemeFeatureMarkerPatch
 import dev.jason.gboardpatches.patches.gboard.features.customtheme.gboardCustomThemeManifestPatch
@@ -613,6 +615,23 @@ val gboardBackupRestorePatch = gboardPublicResourcePatch(
 }
 
 @Suppress("unused")
+val gboardCustomStickersPatch = gboardPublicResourcePatch(
+    featureId = "custom_stickers",
+    name = "Custom Stickers",
+    description = "建立多個自訂貼圖包，並顯示在 Gboard 的貼圖分頁中\n" +
+        "Create your own sticker packs and use them in Gboard's Stickers tab.",
+    default = true,
+) {
+    compatibleWith(COMPATIBILITY_GBOARD)
+
+    dependsOn(
+        gboardPatchesSettingsPatch,
+        gboardCustomStickersFeatureMarkerPatch,
+        gboardCustomStickersPackListPatch,
+    )
+}
+
+@Suppress("unused")
 val gboardSymbolsFooterOrderPatch = gboardPublicResourcePatch(
     featureId = "emojis_stickers_gifs_tab_order",
     name = "Emojis, stickers & GIFs Tab Order",
@@ -858,13 +877,13 @@ val gboardPackageRenamePatch = gboardPublicResourcePatch(
 
     val appDisplayName = stringOption(
         key = "app_display_name",
-        default = "GboardWu",
+        default = "GboardHavaem",
         values = linkedMapOf(
             "Gboard" to "Gboard",
             "Gboard Dev" to "Gboard Dev",
             "Gboard Patches" to "Gboard Patches",
             "Gboard Mod" to "Gboard Mod",
-            "GboardWu" to "GboardWu",
+            "GboardHavaem" to "GboardHavaem",
         ),
         title = "App 名稱 / App name",
         description = "",
@@ -947,6 +966,7 @@ object GboardPublishedPatchCatalog {
         gboardBackupRestorePatch,
         gboardDeveloperOptionsPatch,
         gboardSymbolsFooterOrderPatch,
+        gboardCustomStickersPatch,
         gboardClipboardEnhancementsPatch,
         gboardClipboardContentLimitPatch,
         gboardWebClipboardPatch,

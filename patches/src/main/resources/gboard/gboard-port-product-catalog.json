@@ -700,6 +700,32 @@
       ]
     },
     {
+      "feature_id": "custom_stickers",
+      "public_patch_name": "Custom Stickers",
+      "feature_marker": "dev.jason.gboardpatches.feature.custom_stickers",
+      "target_family_ids": [
+        "customstickers"
+      ],
+      "migration_scope": "version-sensitive",
+      "consumer_files": [
+        "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/features/customstickers/GboardCustomStickersFeatureMarkerPatch.kt",
+        "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/features/customstickers/GboardCustomStickersPackListPatch.kt",
+        "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/registry/GboardPatchRegistry.kt"
+      ],
+      "contributions": [
+        {
+          "contribution_id": "custom_stickers.pack_list",
+          "anchor_family_id": "dedicated_bytecode",
+          "phase": "dedicated",
+          "order": 1980,
+          "required_bindings": [],
+          "runtime_calls": [
+            "CUSTOM_STICKERS_RUNTIME_APPEND_CUSTOM_PACKS"
+          ]
+        }
+      ]
+    },
+    {
       "feature_id": "custom_symbols",
       "public_patch_name": "Custom Symbols",
       "feature_marker": "dev.jason.gboardpatches.feature.custom_symbols",

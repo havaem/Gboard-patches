@@ -968,4 +968,27 @@
     <string name="gboard_clipboard_select_all_toggle">Thêm nút Chọn tất cả trong chế độ chỉnh sửa</string>
     <string name="gboard_clipboard_select_all_summary">Chọn nhiều đoạn trong bảng nhớ tạm rồi nhấn Xóa để xóa tất cả cùng lúc.</string>
     <string name="gboard_clipboard_exclude_pinned">Loại trừ các đoạn đã ghim</string>
+    <string name="gboard_patches_custom_stickers_title">Sticker tùy chỉnh</string>
+    <string name="gboard_patches_custom_stickers_summary">Tạo gói sticker và dùng chúng trong thẻ Sticker của Gboard.</string>
+    <string name="gboard_patches_custom_stickers_error_title">Không dùng được Sticker tùy chỉnh</string>
+    <string name="gboard_patches_custom_stickers_error_summary">Không tải được màn hình gói sticker. Mở lại cài đặt Gboard rồi thử lại.</string>
+    <string name="gboard_patches_custom_stickers_section_packs">Gói sticker</string>
+    <string name="gboard_patches_custom_stickers_empty">Chưa có gói sticker nào</string>
+    <string name="gboard_patches_custom_stickers_sticker_count">%1$d sticker</string>
+    <string name="gboard_patches_custom_stickers_create">Tạo gói sticker</string>
+    <string name="gboard_patches_custom_stickers_name_hint">Tên gói</string>
+    <string name="gboard_patches_custom_stickers_usage_title">Cách dùng</string>
+    <string name="gboard_patches_custom_stickers_usage_summary">Mở thẻ Sticker của Gboard. Nếu không thấy gói, hãy thêm gói từ Quản lý sticker. Gói chưa có sticker sẽ bị ẩn.</string>
+    <string name="gboard_patches_custom_stickers_section_stickers">Sticker</string>
+    <string name="gboard_patches_custom_stickers_add">Thêm sticker</string>
+    <string name="gboard_patches_custom_stickers_add_summary">PNG, WebP, JPEG hoặc GIF, tối đa 8 MB. GIF được lưu thành ảnh tĩnh.</string>
+    <string name="gboard_patches_custom_stickers_rename">Đổi tên gói</string>
+    <string name="gboard_patches_custom_stickers_delete_pack">Xóa gói</string>
+    <string name="gboard_patches_custom_stickers_delete_pack_confirm">Xóa gói này cùng toàn bộ sticker trong gói?</string>
+    <string name="gboard_patches_custom_stickers_sticker_item">Sticker %1$d</string>
+    <string name="gboard_patches_custom_stickers_delete_sticker_confirm">Xóa sticker này?</string>
+    <string name="gboard_patches_custom_stickers_added">Đã thêm sticker.</string>
+    <string name="gboard_patches_custom_stickers_add_failed">Không thêm được ảnh này.</string>
+    <string name="gboard_patches_custom_stickers_save_failed">Không lưu được thay đổi.</string>
+    <string name="gboard_patches_custom_stickers_pack_missing">Gói sticker này không còn tồn tại.</string>
 </resources>
