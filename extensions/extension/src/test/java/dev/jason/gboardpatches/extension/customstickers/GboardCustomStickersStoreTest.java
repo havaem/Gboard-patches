@@ -124,9 +124,9 @@ public class GboardCustomStickersStoreTest {
         assertTrue(restored.edited.isEmpty());
         assertFalse(GboardCustomStickersStore.stickerFile(context, pack.id, second).exists());
 
-        // One setting applied to several stickers; deleting an edited one removes its original.
-        assertEquals(0, GboardCustomStickersStore.saveEdited(
-                context, pack.id, List.of(source, before.get(1)), outline));
+        // Deleting an edited sticker removes its original too.
+        GboardCustomStickersStore.saveEdited(context, pack.id, source, outline);
+        GboardCustomStickersStore.saveEdited(context, pack.id, before.get(1), outline);
         GboardCustomStickersStore.Pack batch = GboardCustomStickersStore.findPack(context, pack.id);
         assertEquals(2, batch.edited.size());
         GboardCustomStickersStore.deleteSticker(context, pack.id, batch.stickers.get(0));
@@ -139,6 +139,42 @@ public class GboardCustomStickersStoreTest {
                 removeBackground);
         assertTrue(solid.backgroundNotFound);
         assertEquals(Color.BLUE, solid.bitmap.getPixel(0, 0));
+    }
+
+    @Test public void defaultsReorderingAndExportImportRoundTrip() throws Exception {
+        GboardCustomStickersStore.Pack pack = GboardCustomStickersStore.createPack(context, "Mine");
+        GboardCustomStickersStore.Edits defaults =
+                new GboardCustomStickersStore.Edits(0, 30, 6, Color.BLACK);
+        GboardCustomStickersStore.setDefaults(context, pack.id, defaults);
+        GboardCustomStickersStore.addSticker(context, pack.id, png(16, 16));
+        GboardCustomStickersStore.addSticker(context, pack.id, png(24, 24));
+        GboardCustomStickersStore.addSticker(context, pack.id, png(32, 32));
+
+        GboardCustomStickersStore.Pack saved = GboardCustomStickersStore.findPack(context, pack.id);
+        assertEquals(defaults, saved.defaults);
+        assertEquals(3, saved.edited.size());
+        for (String sticker : saved.stickers) assertEquals(defaults, saved.editsOf(sticker));
+
+        String last = saved.stickers.get(2);
+        GboardCustomStickersStore.moveStickers(context, pack.id, List.of(last), 0);
+        assertEquals(last, GboardCustomStickersStore.findPack(context, pack.id).stickers.get(0));
+
+        GboardCustomStickersStore.Pack imported = GboardCustomStickersStore.importPack(
+                context, GboardCustomStickersStore.exportPack(context, pack.id));
+        assertNotEquals(pack.id, imported.id);
+        assertEquals("Mine", imported.name);
+        assertEquals(GboardCustomStickersStore.findPack(context, pack.id).stickers,
+                imported.stickers);
+        assertEquals(defaults, imported.editsOf(imported.stickers.get(0)));
+        File importedOriginal = GboardCustomStickersStore.stickerFile(context, imported.id,
+                imported.sourceOf(imported.stickers.get(0)));
+        assertTrue(importedOriginal.isFile());
+
+        GboardCustomStickersStore.movePack(context, imported.id, 0);
+        assertEquals(imported.id, GboardCustomStickersStore.load(context).get(0).id);
+
+        assertThrows(java.io.IOException.class,
+                () -> GboardCustomStickersStore.importPack(context, png(4, 4)));
     }
 
     @Test public void rejectsEmptyNamesAndNonImages() throws Exception {

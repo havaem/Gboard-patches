@@ -344,7 +344,7 @@ public final class GboardPatchesSettingsActivity extends Activity
             runOnUiThread(this::closeFeature);
             return;
         }
-        if (settingsOrchestrator.snapshot().getCurrent() != null) navigateBack();
+        if (settingsOrchestrator.snapshot().getCurrent() != null) navigateBack(false);
     }
 
     @Override
@@ -3261,8 +3261,21 @@ public final class GboardPatchesSettingsActivity extends Activity
     }
 
     private boolean navigateBack() {
+        return navigateBack(true);
+    }
+
+    /** Returns true when the activity should exit; a feature may keep the user on its screen. */
+    private boolean navigateBack(boolean askFeature) {
         GboardPatchesSettingsOrchestrator.State<GboardPatchesSettingsContract.Feature> state =
                 settingsOrchestrator.snapshot();
+        GboardPatchesSettingsContract.Feature current = state.getCurrent();
+        if (askFeature && current != null && !isSearching()) {
+            try {
+                if (current.onBackRequested(this)) return false;
+            } catch (Throwable failure) {
+                Log.w(TAG, "Feature back handler failed", failure);
+            }
+        }
         if (state.getCurrent() != null) {
             boolean returningToRoot = state.getBackStack().isEmpty();
             requestScrollPositionOnNextScreenApply(

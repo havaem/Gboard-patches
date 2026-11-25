@@ -21,6 +21,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 import java.util.regex.Pattern;
 
 /**
@@ -36,6 +39,10 @@ public final class GboardCustomStickersStore {
     static final int MAX_NAME_LENGTH = 60;
     /** Outline width for a 512 px sticker. */
     static final int MAX_OUTLINE_WIDTH = 32;
+    public static final int MAX_ARCHIVE_BYTES = 64 * 1024 * 1024;
+    private static final int MAX_ARCHIVE_ENTRY_BYTES = 2 * 1024 * 1024;
+    private static final int MAX_ARCHIVE_ENTRIES = 2000;
+    private static final String ARCHIVE_INDEX = "pack.json";
     private static final long MAX_SOURCE_PIXELS = 40_000_000L;
     // Ids and file names come back from disk; only these shapes may become paths.
     private static final Pattern PACK_ID = Pattern.compile("[0-9a-f]{32}");
@@ -51,11 +58,14 @@ public final class GboardCustomStickersStore {
         public final String cover;
         /** Edited stickers by shown file name: their original image and settings. */
         public final Map<String, Edited> edited;
+        /** Edits applied automatically to newly added stickers. */
+        public final Edits defaults;
 
         Pack(String id, String name, List<String> stickers, String cover,
-                Map<String, Edited> edited) {
+                Map<String, Edited> edited, Edits defaults) {
             this.id = id;
             this.name = name;
+            this.defaults = defaults == null ? Edits.NONE : defaults;
             this.stickers = Collections.unmodifiableList(new ArrayList<>(stickers));
             this.cover = cover != null && stickers.contains(cover) ? cover
                     : stickers.isEmpty() ? null : stickers.get(0);
@@ -79,6 +89,18 @@ public final class GboardCustomStickersStore {
         public String sourceOf(String fileName) {
             Edited record = edited.get(fileName);
             return record == null ? fileName : record.source;
+        }
+
+        Pack withStickers(List<String> stickers, String cover, Map<String, Edited> edited) {
+            return new Pack(id, name, stickers, cover, edited, defaults);
+        }
+
+        Pack withName(String newName) {
+            return new Pack(id, newName, stickers, cover, edited, defaults);
+        }
+
+        Pack withDefaults(Edits newDefaults) {
+            return new Pack(id, name, stickers, cover, edited, newDefaults);
         }
     }
 
@@ -115,7 +137,7 @@ public final class GboardCustomStickersStore {
         if (cleaned.isEmpty()) throw new IOException("Pack name is empty");
         List<Pack> packs = new ArrayList<>(load(context));
         Pack pack = new Pack(newId(), cleaned, Collections.emptyList(), null,
-                Collections.emptyMap());
+                Collections.emptyMap(), Edits.NONE);
         packs.add(pack);
         save(context, packs);
         return pack;
@@ -128,7 +150,40 @@ public final class GboardCustomStickersStore {
         List<Pack> packs = new ArrayList<>(load(context));
         int index = indexOf(packs, packId);
         Pack old = packs.get(index);
-        packs.set(index, new Pack(old.id, cleaned, old.stickers, old.cover, old.edited));
+        packs.set(index, old.withName(cleaned));
+        save(context, packs);
+    }
+
+    public static synchronized void setDefaults(Context context, String packId, Edits defaults)
+            throws IOException {
+        List<Pack> packs = new ArrayList<>(load(context));
+        int index = indexOf(packs, packId);
+        packs.set(index, packs.get(index).withDefaults(defaults));
+        save(context, packs);
+    }
+
+    /** Moves stickers, keeping their relative order, so the first lands at {@code target}. */
+    public static synchronized void moveStickers(Context context, String packId,
+            List<String> fileNames, int target) throws IOException {
+        List<Pack> packs = new ArrayList<>(load(context));
+        int index = indexOf(packs, packId);
+        Pack old = packs.get(index);
+        List<String> moving = new ArrayList<>();
+        for (String sticker : old.stickers) {
+            if (fileNames.contains(sticker)) moving.add(sticker);
+        }
+        List<String> stickers = new ArrayList<>(old.stickers);
+        stickers.removeAll(moving);
+        stickers.addAll(clamp(target, 0, stickers.size()), moving);
+        packs.set(index, old.withStickers(stickers, old.cover, old.edited));
+        save(context, packs);
+    }
+
+    public static synchronized void movePack(Context context, String packId, int target)
+            throws IOException {
+        List<Pack> packs = new ArrayList<>(load(context));
+        Pack pack = packs.remove(indexOf(packs, packId));
+        packs.add(clamp(target, 0, packs.size()), pack);
         save(context, packs);
     }
 
@@ -138,7 +193,7 @@ public final class GboardCustomStickersStore {
         int index = indexOf(packs, packId);
         Pack old = packs.get(index);
         if (!old.stickers.contains(fileName)) throw new IOException("Unknown sticker");
-        packs.set(index, new Pack(old.id, old.name, old.stickers, fileName, old.edited));
+        packs.set(index, old.withStickers(old.stickers, fileName, old.edited));
         save(context, packs);
     }
 
@@ -149,13 +204,31 @@ public final class GboardCustomStickersStore {
         deleteRecursively(packDirectory(context, packId));
     }
 
-    /** Called off the UI thread with the picked document's bytes. */
+    /**
+     * Called off the UI thread with the picked document's bytes. The pack's default edits are
+     * applied to the new sticker, keeping the import as its original.
+     */
     public static synchronized void addSticker(Context context, String packId, byte[] source)
             throws IOException {
         List<Pack> packs = new ArrayList<>(load(context));
         int index = indexOf(packs, packId);
-        insertSticker(context, packs, index, packs.get(index).stickers.size(),
+        Pack pack = packs.get(index);
+        String added = insertSticker(context, packs, index, pack.stickers.size(),
                 encodeSticker(source));
+        if (!pack.defaults.isEmpty()) saveEdited(context, packId, added, pack.defaults);
+    }
+
+    /** Deletes several stickers; returns how many could not be deleted. */
+    public static int deleteStickers(Context context, String packId, List<String> fileNames) {
+        int failed = 0;
+        for (String fileName : fileNames) {
+            try {
+                deleteSticker(context, packId, fileName);
+            } catch (IOException | RuntimeException failure) {
+                failed++;
+            }
+        }
+        return failed;
     }
 
     /** Editor settings; outline width is given for a 512 px sticker and scaled to its size. */
@@ -298,7 +371,7 @@ public final class GboardCustomStickersStore {
         List<String> stickers = new ArrayList<>(old.stickers);
         stickers.set(position, shown);
         String cover = fileName.equals(old.cover) ? shown : old.cover;
-        packs.set(index, new Pack(old.id, old.name, stickers, cover, edited));
+        packs.set(index, old.withStickers(stickers, cover, edited));
         if (written != null) {
             saveOrDelete(context, packs, written);
         } else {
@@ -312,28 +385,15 @@ public final class GboardCustomStickersStore {
         return shown;
     }
 
-    /** Applies the same edits to several stickers; returns how many could not be saved. */
-    public static int saveEdited(Context context, String packId, List<String> fileNames,
-            Edits edits) {
-        int failed = 0;
-        for (String fileName : fileNames) {
-            try {
-                saveEdited(context, packId, fileName, edits);
-            } catch (IOException | RuntimeException failure) {
-                failed++;
-            }
-        }
-        return failed;
-    }
-
-    private static void insertSticker(Context context, List<Pack> packs, int index, int position,
-            Encoded encoded) throws IOException {
+    private static String insertSticker(Context context, List<Pack> packs, int index,
+            int position, Encoded encoded) throws IOException {
         Pack old = packs.get(index);
         File target = writeSticker(context, old.id, encoded);
         List<String> stickers = new ArrayList<>(old.stickers);
         stickers.add(position, target.getName());
-        packs.set(index, new Pack(old.id, old.name, stickers, old.cover, old.edited));
+        packs.set(index, old.withStickers(stickers, old.cover, old.edited));
         saveOrDelete(context, packs, target);
+        return target.getName();
     }
 
     private static File writeSticker(Context context, String packId, Encoded encoded)
@@ -369,7 +429,7 @@ public final class GboardCustomStickersStore {
         if (!stickers.remove(fileName)) throw new IOException("Unknown sticker");
         Map<String, Edited> edited = new LinkedHashMap<>(old.edited);
         edited.remove(fileName);
-        packs.set(index, new Pack(old.id, old.name, stickers, old.cover, edited));
+        packs.set(index, old.withStickers(stickers, old.cover, edited));
         save(context, packs);
         //noinspection ResultOfMethodCallIgnored
         stickerFile(context, packId, fileName).delete();
@@ -378,6 +438,118 @@ public final class GboardCustomStickersStore {
             //noinspection ResultOfMethodCallIgnored
             stickerFile(context, packId, source).delete();
         }
+    }
+
+    /** A zip with {@code pack.json} and every shown and original image of the pack. */
+    public static synchronized byte[] exportPack(Context context, String packId)
+            throws IOException {
+        Pack pack = findPack(context, packId);
+        if (pack == null) throw new IOException("Unknown sticker pack");
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        try (ZipOutputStream zip = new ZipOutputStream(output)) {
+            zip.putNextEntry(new ZipEntry(ARCHIVE_INDEX));
+            zip.write(toJson(Collections.singletonList(pack)).getBytes(StandardCharsets.UTF_8));
+            zip.closeEntry();
+            java.util.Set<String> files = new java.util.LinkedHashSet<>(pack.stickers);
+            for (Edited record : pack.edited.values()) files.add(record.source);
+            for (String file : files) {
+                File image = stickerFile(context, packId, file);
+                if (!image.isFile()) continue;
+                zip.putNextEntry(new ZipEntry(file));
+                zip.write(java.nio.file.Files.readAllBytes(image.toPath()));
+                zip.closeEntry();
+            }
+        } catch (JSONException failure) {
+            throw new IOException("Sticker pack could not be exported", failure);
+        }
+        return output.toByteArray();
+    }
+
+    /**
+     * Adds an exported pack as a new pack. Untrusted input: only image entries with sticker file
+     * names are kept, and sizes and entry counts are capped. Off the UI thread.
+     */
+    public static synchronized Pack importPack(Context context, byte[] archive)
+            throws IOException {
+        String json = null;
+        Map<String, byte[]> images = new LinkedHashMap<>();
+        long total = 0;
+        int entries = 0;
+        try (ZipInputStream zip = new ZipInputStream(new java.io.ByteArrayInputStream(archive))) {
+            ZipEntry entry;
+            while ((entry = zip.getNextEntry()) != null) {
+                if (++entries > MAX_ARCHIVE_ENTRIES) throw new IOException("Too many entries");
+                if (entry.isDirectory()) continue;
+                byte[] bytes = readLimited(zip, MAX_ARCHIVE_ENTRY_BYTES);
+                total += bytes.length;
+                if (total > MAX_ARCHIVE_BYTES) throw new IOException("Archive is too large");
+                String name = entry.getName();
+                if (ARCHIVE_INDEX.equals(name)) {
+                    json = new String(bytes, StandardCharsets.UTF_8);
+                } else if (STICKER_FILE.matcher(name).matches() && isStickerImage(bytes)) {
+                    images.put(name, bytes);
+                }
+            }
+        }
+        if (json == null) throw new IOException("Not a sticker pack");
+        Pack exported;
+        try {
+            List<Pack> parsed = fromJson(json);
+            if (parsed.isEmpty()) throw new IOException("Not a sticker pack");
+            exported = parsed.get(0);
+        } catch (JSONException failure) {
+            throw new IOException("Not a sticker pack", failure);
+        }
+        List<String> stickers = new ArrayList<>();
+        for (String sticker : exported.stickers) {
+            if (images.containsKey(sticker)) stickers.add(sticker);
+        }
+        Map<String, Edited> edited = new LinkedHashMap<>();
+        for (Map.Entry<String, Edited> record : exported.edited.entrySet()) {
+            if (images.containsKey(record.getValue().source)) {
+                edited.put(record.getKey(), record.getValue());
+            }
+        }
+        Pack pack = new Pack(newId(), exported.name, stickers, exported.cover, edited,
+                exported.defaults);
+        File directory = packDirectory(context, pack.id);
+        try {
+            if (!directory.mkdirs()) throw new IOException("Sticker folder could not be created");
+            java.util.Set<String> needed = new java.util.HashSet<>(stickers);
+            for (Edited record : edited.values()) needed.add(record.source);
+            for (String file : needed) {
+                try (FileOutputStream output = new FileOutputStream(new File(directory, file))) {
+                    output.write(images.get(file));
+                }
+            }
+            List<Pack> packs = new ArrayList<>(load(context));
+            packs.add(pack);
+            save(context, packs);
+        } catch (IOException | RuntimeException failure) {
+            deleteRecursively(directory);
+            throw failure;
+        }
+        return pack;
+    }
+
+    private static byte[] readLimited(java.io.InputStream input, int limit) throws IOException {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        byte[] buffer = new byte[16 * 1024];
+        int read;
+        while ((read = input.read(buffer)) != -1) {
+            if (output.size() + read > limit) throw new IOException("Archive entry is too large");
+            output.write(buffer, 0, read);
+        }
+        return output.toByteArray();
+    }
+
+    private static boolean isStickerImage(byte[] bytes) {
+        BitmapFactory.Options bounds = new BitmapFactory.Options();
+        bounds.inJustDecodeBounds = true;
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.length, bounds);
+        return ("image/png".equals(bounds.outMimeType) || "image/webp".equals(bounds.outMimeType))
+                && bounds.outWidth > 0 && bounds.outWidth <= MAX_STICKER_EDGE_PX
+                && bounds.outHeight > 0 && bounds.outHeight <= MAX_STICKER_EDGE_PX;
     }
 
     public static File stickerFile(Context context, String packId, String fileName) {
@@ -397,19 +569,32 @@ public final class GboardCustomStickersStore {
             if (!pack.edited.isEmpty()) {
                 JSONObject edited = new JSONObject();
                 for (Map.Entry<String, Edited> entry : pack.edited.entrySet()) {
-                    Edits edits = entry.getValue().edits;
-                    edited.put(entry.getKey(), new JSONObject()
-                            .put("source", entry.getValue().source)
-                            .put("background", edits.backgroundTolerance)
-                            .put("corners", edits.cornerPercent)
-                            .put("outline", edits.outlineWidth)
-                            .put("color", edits.outlineColor));
+                    edited.put(entry.getKey(), editsToJson(entry.getValue().edits)
+                            .put("source", entry.getValue().source));
                 }
                 item.put("edited", edited);
             }
+            if (!pack.defaults.isEmpty()) item.put("defaults", editsToJson(pack.defaults));
             array.put(item);
         }
         return new JSONObject().put("version", 1).put("packs", array).toString();
+    }
+
+    private static JSONObject editsToJson(Edits edits) throws JSONException {
+        return new JSONObject()
+                .put("background", edits.backgroundTolerance)
+                .put("corners", edits.cornerPercent)
+                .put("outline", edits.outlineWidth)
+                .put("color", edits.outlineColor);
+    }
+
+    /** Clamped: these values size buffers when a sticker is rendered. */
+    private static Edits editsFromJson(JSONObject json) {
+        return new Edits(
+                clamp(json.optInt("background"), 0, 255),
+                clamp(json.optInt("corners"), 0, 100),
+                clamp(json.optInt("outline"), 0, MAX_OUTLINE_WIDTH),
+                json.optInt("color", 0xFFFFFFFF));
     }
 
     /** Drops entries whose id or file name could escape the sticker folder. */
@@ -437,16 +622,14 @@ public final class GboardCustomStickersStore {
                     String key = keys.next();
                     JSONObject record = editedJson.optJSONObject(key);
                     if (record == null) continue;
-                    // Clamped: these values size buffers when the sticker is re-rendered.
-                    edited.put(key, new Edited(record.optString("source", ""), new Edits(
-                            clamp(record.optInt("background"), 0, 255),
-                            clamp(record.optInt("corners"), 0, 100),
-                            clamp(record.optInt("outline"), 0, MAX_OUTLINE_WIDTH),
-                            record.optInt("color", 0xFFFFFFFF))));
+                    edited.put(key, new Edited(record.optString("source", ""),
+                            editsFromJson(record)));
                 }
             }
+            JSONObject defaults = item.optJSONObject("defaults");
             // Pack keeps only a cover and edit records that point at validated sticker files.
-            packs.add(new Pack(id, name, stickers, item.optString("cover", null), edited));
+            packs.add(new Pack(id, name, stickers, item.optString("cover", null), edited,
+                    defaults == null ? Edits.NONE : editsFromJson(defaults)));
         }
         return packs;
     }

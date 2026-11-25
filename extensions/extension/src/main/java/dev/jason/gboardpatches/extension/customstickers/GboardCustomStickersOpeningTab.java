@@ -52,20 +52,26 @@ public final class GboardCustomStickersOpeningTab {
             Object context = handles.managerContext.get(corpusManager);
             if (!(context instanceof Context)) return null;
             String wanted = read((Context) context);
+            Log.i(TAG, "Emoji key opened; configured tab=" + (wanted.isEmpty() ? "stock" : wanted));
             if (STOCK.equals(wanted)) return null;
             List<?> corpus = (List<?>) handles.availableCorpus.invoke(
                     corpusManager, editorInfo, internalEditor);
+            StringBuilder seen = new StringBuilder();
             for (Object item : corpus) {
                 if (!handles.corpusItem.isInstance(item)) continue;
                 Object keyboardType = handles.itemKeyboardType.get(item);
-                if (keyboardType == null
-                        || !wanted.equals(handles.keyboardTypeName.get(keyboardType))) {
-                    continue;
-                }
+                Object name = keyboardType == null ? null
+                        : handles.keyboardTypeName.get(keyboardType);
                 boolean enabled = handles.itemState.get(item) == handles.enabledState;
                 boolean allowed = activationFlag || handles.itemInternalEditors.getBoolean(item);
-                return enabled && allowed ? keyboardType : null;
+                seen.append(name).append(enabled ? "" : "(disabled)")
+                        .append(allowed ? "" : "(no-internal)").append(' ');
+                if (wanted.equals(name) && enabled && allowed) return keyboardType;
             }
+            // shortcut: diagnostic for the opening tab not applying on some devices; remove
+            // once the cause is known.
+            Log.i(TAG, "Opening tab " + wanted + " not used; internal=" + internalEditor
+                    + ", flag=" + activationFlag + ", tabs=" + seen);
             return null;
         } catch (Throwable failure) {
             Log.w(TAG, "Failed to choose the opening expression tab", failure);

@@ -36,6 +36,14 @@ public final class GboardPatchesSettingsContract {
         default void onHidden(FeatureHost host) {
         }
 
+        /**
+         * Called when the user goes back from this screen. Return true to stay, for example to
+         * confirm discarding unsaved changes; the feature leaves later with closeFeature().
+         */
+        default boolean onBackRequested(FeatureHost host) {
+            return false;
+        }
+
         default boolean updatesDuringKeyboardPreview() { return false; }
 
         default int getEntryIcon() {

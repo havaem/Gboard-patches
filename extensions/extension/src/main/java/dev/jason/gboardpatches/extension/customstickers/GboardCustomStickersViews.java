@@ -33,6 +33,8 @@ final class GboardCustomStickersViews {
     private static final int THUMBNAIL_PX = 192;
     private static final int TILE_COLOR = 0x14808080;
     private static final int MAX_OUTLINE_WIDTH = GboardCustomStickersStore.MAX_OUTLINE_WIDTH;
+    // Beyond this the flood fill eats most subjects; Strong used to be 80.
+    private static final int MAX_BACKGROUND_TOLERANCE = 100;
     // One shared worker: previews are rebuilt on every settings refresh and while dragging.
     private static final ExecutorService PREVIEW_RENDERER = Executors.newSingleThreadExecutor(
             runnable -> {
@@ -49,9 +51,14 @@ final class GboardCustomStickersViews {
         void onClick(String packId);
     }
 
-    /** One row per pack: cover, name, and a summary line supplied by the caller. */
+    /**
+     * One row per pack: cover, name, and a summary line supplied by the caller. Long-press drags
+     * a pack to a new place.
+     */
     static View createPackList(Context context, List<GboardCustomStickersStore.Pack> packs,
-            List<String> summaries, PackClick click) {
+            List<String> summaries, PackClick click, Moved moved) {
+        List<String> packIds = new ArrayList<>();
+        for (GboardCustomStickersStore.Pack pack : packs) packIds.add(pack.id);
         float density = density(context);
         int primary = resolveColor(context, android.R.attr.textColorPrimary,
                 isNight(context) ? Color.WHITE : Color.BLACK);
@@ -72,6 +79,7 @@ final class GboardCustomStickersViews {
             row.setClickable(true);
             row.setFocusable(true);
             row.setOnClickListener(view -> click.onClick(pack.id));
+            attachReorder(row, pack.id, i, packIds, moved);
             row.setContentDescription(pack.name + ", " + summaries.get(i));
 
             ImageView cover = new ImageView(context);
@@ -114,13 +122,35 @@ final class GboardCustomStickersViews {
             row.addView(chevron);
             list.addView(row);
         }
-        loadThumbnails(covers, files);
+        loadThumbnails(covers, files, null);
         return list;
     }
 
-    /** Square tiles, four per row; the cover sticker gets an accent outline. */
+    interface Moved {
+        void onMoved(String key, int target);
+    }
+
+    /** Labels shown on the grid; {@code photo} marks stickers Messenger shows as photos. */
+    static final class GridLabels {
+        final String item;
+        final String cover;
+        final String photo;
+        final String selected;
+
+        GridLabels(String item, String cover, String photo, String selected) {
+            this.item = item;
+            this.cover = cover;
+            this.photo = photo;
+            this.selected = selected;
+        }
+    }
+
+    /**
+     * Square tiles, four per row. Long-press drags a sticker to a new place. When
+     * {@code selected} is not null the grid is in selection mode and shows check marks.
+     */
     static View createStickerGrid(Context context, GboardCustomStickersStore.Pack pack,
-            String itemLabelFormat, String coverLabel, StickerClick click) {
+            GridLabels labels, java.util.Set<String> selected, StickerClick click, Moved moved) {
         float density = density(context);
         int gap = px(density, 4);
         int accent = resolveColor(context, android.R.attr.colorAccent, 0xFF1A73E8);
@@ -129,20 +159,26 @@ final class GboardCustomStickersViews {
         grid.setPadding(gap, gap, gap, gap);
         List<ImageView> images = new ArrayList<>();
         List<File> files = new ArrayList<>();
+        List<View> photoBadges = new ArrayList<>();
         for (int i = 0; i < pack.stickers.size(); i++) {
             String fileName = pack.stickers.get(i);
             int position = i;
             boolean isCover = fileName.equals(pack.cover);
+            boolean isSelected = selected != null && selected.contains(fileName);
             FrameLayout cell = new SquareFrame(context);
-            cell.setBackground(tile(density, isCover ? px(density, 2) : 0, accent));
+            cell.setBackground(tile(density,
+                    isSelected ? px(density, 3) : isCover ? px(density, 2) : 0, accent));
             cell.setPadding(gap * 2, gap * 2, gap * 2, gap * 2);
-            String label = String.format(Locale.ROOT, itemLabelFormat, i + 1);
-            cell.setContentDescription(isCover ? label + ", " + coverLabel : label);
+            String label = String.format(Locale.ROOT, labels.item, i + 1);
+            if (isCover) label += ", " + labels.cover;
+            if (isSelected) label += ", " + labels.selected;
+            cell.setContentDescription(label);
             cell.setClickable(true);
             cell.setFocusable(true);
             int ripple = selectableBackground(context);
             if (ripple != 0) cell.setForeground(context.getDrawable(ripple));
             cell.setOnClickListener(view -> click.onClick(fileName, position));
+            attachReorder(cell, fileName, position, pack.stickers, moved);
             ImageView image = new ImageView(context);
             image.setScaleType(ImageView.ScaleType.FIT_CENTER);
             image.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
@@ -150,20 +186,22 @@ final class GboardCustomStickersViews {
                     FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT,
                     Gravity.CENTER));
             if (isCover) {
-                TextView badge = new TextView(context);
-                badge.setText(coverLabel);
-                badge.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f);
-                badge.setTextColor(Color.WHITE);
-                badge.setPadding(px(density, 6), px(density, 1), px(density, 6), px(density, 1));
-                GradientDrawable badgeBackground = new GradientDrawable();
-                badgeBackground.setCornerRadius(px(density, 8));
-                badgeBackground.setColor(accent);
-                badge.setBackground(badgeBackground);
-                badge.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-                cell.addView(badge, new FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.WRAP_CONTENT,
-                        FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.START));
+                cell.addView(badge(context, density, labels.cover, accent),
+                        new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT,
+                                FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.START));
             }
+            if (selected != null) {
+                TextView check = badge(context, density, isSelected ? "✓" : " ",
+                        isSelected ? accent : 0x66000000);
+                cell.addView(check, new FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.WRAP_CONTENT,
+                        FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.END));
+            }
+            TextView photo = badge(context, density, labels.photo, 0xCC5F6368);
+            photo.setVisibility(View.GONE);
+            cell.addView(photo, new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL));
             GridLayout.LayoutParams params = new GridLayout.LayoutParams(
                     GridLayout.spec(i / COLUMNS), GridLayout.spec(i % COLUMNS, 1f));
             params.width = 0;
@@ -171,6 +209,7 @@ final class GboardCustomStickersViews {
             grid.addView(cell, params);
             images.add(image);
             files.add(GboardCustomStickersStore.stickerFile(context, pack.id, fileName));
+            photoBadges.add(photo);
         }
         // An incomplete last row still needs its columns to keep their width.
         for (int i = pack.stickers.size(); i % COLUMNS != 0; i++) {
@@ -180,19 +219,84 @@ final class GboardCustomStickersViews {
             params.setMargins(gap, gap, gap, gap);
             grid.addView(new View(context), params);
         }
-        loadThumbnails(images, files);
+        loadThumbnails(images, files, photoBadges);
         return grid;
+    }
+
+    private static TextView badge(Context context, float density, String text, int color) {
+        TextView badge = new TextView(context);
+        badge.setText(text);
+        badge.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f);
+        badge.setTextColor(Color.WHITE);
+        badge.setPadding(px(density, 6), px(density, 1), px(density, 6), px(density, 1));
+        GradientDrawable background = new GradientDrawable();
+        background.setCornerRadius(px(density, 8));
+        background.setColor(color);
+        badge.setBackground(background);
+        badge.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        return badge;
+    }
+
+    /** Long-press starts dragging {@code key}; dropping it on this view moves it here. */
+    private static void attachReorder(View view, String key, int position, List<String> keys,
+            Moved moved) {
+        view.setOnLongClickListener(source -> source.startDragAndDrop(
+                android.content.ClipData.newPlainText(key, key),
+                new View.DragShadowBuilder(source), key, 0));
+        view.setOnDragListener((target, event) -> {
+            Object dragged = event.getLocalState();
+            switch (event.getAction()) {
+                case android.view.DragEvent.ACTION_DRAG_STARTED:
+                    // Only drags started by this list take part.
+                    return dragged instanceof String && keys.contains(dragged);
+                case android.view.DragEvent.ACTION_DRAG_ENTERED:
+                    target.setAlpha(0.5f);
+                    return true;
+                case android.view.DragEvent.ACTION_DROP:
+                    target.setAlpha(1f);
+                    if (!key.equals(dragged)) moved.onMoved((String) dragged, position);
+                    return true;
+                default:
+                    target.setAlpha(1f);
+                    return true;
+            }
+        });
     }
 
     /**
      * Large preview of an edited sticker on a checkerboard, so transparent areas are visible.
      * Rendering runs off the UI thread with the same code that saves the sticker.
      */
-    static View createEditorPreview(Context context, File file,
-            GboardCustomStickersStore.Edits edits, String backgroundNotFoundText,
-            String description, String cornerLabel, String outlineLabel,
+    static final class EditorLabels {
+        final String description;
+        final String holdHint;
+        final String backgroundNotFound;
+        final String background;
+        final String corners;
+        final String outline;
+
+        EditorLabels(String description, String holdHint, String backgroundNotFound,
+                String background, String corners, String outline) {
+            this.description = description;
+            this.holdHint = holdHint;
+            this.backgroundNotFound = backgroundNotFound;
+            this.background = background;
+            this.corners = corners;
+            this.outline = outline;
+        }
+    }
+
+    /**
+     * Preview of {@code original} with the edits, on a checkerboard so transparent areas show;
+     * holding the image shows the original. Rendering runs off the UI thread with the same code
+     * that saves the sticker.
+     */
+    static View createEditorPreview(Context context, File original,
+            GboardCustomStickersStore.Edits edits, EditorLabels labels,
             EditsChosen editsChosen) {
         float density = density(context);
+        int secondary = resolveColor(context, android.R.attr.textColorSecondary,
+                isNight(context) ? 0xFFBDBDBD : 0xFF5F6368);
         LinearLayout column = new LinearLayout(context);
         column.setOrientation(LinearLayout.VERTICAL);
         column.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -203,36 +307,63 @@ final class GboardCustomStickersViews {
         int inset = px(density, 12);
         image.setPadding(inset, inset, inset, inset);
         image.setBackground(checkerboard(context, density));
-        image.setContentDescription(description);
+        image.setContentDescription(labels.description);
         int size = px(density, 240);
         column.addView(image, new LinearLayout.LayoutParams(size, size));
 
+        TextView hint = new TextView(context);
+        hint.setText(labels.holdHint);
+        hint.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
+        hint.setTextColor(secondary);
+        hint.setPadding(0, px(density, 6), 0, 0);
+        column.addView(hint);
+
         TextView caption = new TextView(context);
-        caption.setText(backgroundNotFoundText);
+        caption.setText(labels.backgroundNotFound);
         caption.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
-        caption.setTextColor(resolveColor(context, android.R.attr.textColorSecondary,
-                isNight(context) ? 0xFFBDBDBD : 0xFF5F6368));
+        caption.setTextColor(secondary);
         caption.setGravity(Gravity.CENTER);
         caption.setPadding(px(density, 16), px(density, 8), px(density, 16), 0);
         caption.setVisibility(View.GONE);
         column.addView(caption);
 
-        // Slider values while dragging: corner percent, outline width.
-        int[] values = {edits.cornerPercent, edits.outlineWidth};
+        // [0] edited result, [1] untouched original; shown while the image is held.
+        Bitmap[] shown = new Bitmap[2];
+        boolean[] holding = new boolean[1];
+        image.setOnTouchListener((view, event) -> {
+            int action = event.getActionMasked();
+            if (action == android.view.MotionEvent.ACTION_DOWN) {
+                holding[0] = true;
+                if (shown[1] != null) image.setImageBitmap(shown[1]);
+            } else if (action == android.view.MotionEvent.ACTION_UP
+                    || action == android.view.MotionEvent.ACTION_CANCEL) {
+                holding[0] = false;
+                if (shown[0] != null) image.setImageBitmap(shown[0]);
+            }
+            return true;
+        });
+        PREVIEW_RENDERER.execute(() -> {
+            Bitmap source = BitmapFactory.decodeFile(original.getPath());
+            image.post(() -> shown[1] = source);
+        });
+
+        // Slider values while dragging: background tolerance, corner percent, outline width.
+        int[] values = {edits.backgroundTolerance, edits.cornerPercent, edits.outlineWidth};
         AtomicInteger latest = new AtomicInteger();
         Runnable render = () -> {
             // Only the newest request renders; older ones are skipped while the user drags.
             int ticket = latest.incrementAndGet();
             GboardCustomStickersStore.Edits current = new GboardCustomStickersStore.Edits(
-                    edits.backgroundTolerance, values[0], values[1], edits.outlineColor);
+                    values[0], values[1], values[2], edits.outlineColor);
             PREVIEW_RENDERER.execute(() -> {
                 if (ticket != latest.get()) return;
                 try {
                     GboardCustomStickersStore.Rendered rendered =
-                            GboardCustomStickersStore.render(file, current);
+                            GboardCustomStickersStore.render(original, current);
                     image.post(() -> {
                         if (ticket != latest.get()) return;
-                        image.setImageBitmap(rendered.bitmap);
+                        shown[0] = rendered.bitmap;
+                        if (!holding[0]) image.setImageBitmap(rendered.bitmap);
                         caption.setVisibility(
                                 rendered.backgroundNotFound ? View.VISIBLE : View.GONE);
                     });
@@ -242,9 +373,12 @@ final class GboardCustomStickersViews {
             });
         };
         Runnable chosen = () -> editsChosen.onChosen(new GboardCustomStickersStore.Edits(
-                edits.backgroundTolerance, values[0], values[1], edits.outlineColor));
-        addSlider(column, density, cornerLabel, "%", 100, values, 0, render, chosen);
-        addSlider(column, density, outlineLabel, "", MAX_OUTLINE_WIDTH, values, 1, render, chosen);
+                values[0], values[1], values[2], edits.outlineColor));
+        addSlider(column, density, labels.background, "", MAX_BACKGROUND_TOLERANCE, values, 0,
+                render, chosen);
+        addSlider(column, density, labels.corners, "%", 100, values, 1, render, chosen);
+        addSlider(column, density, labels.outline, "", MAX_OUTLINE_WIDTH, values, 2,
+                render, chosen);
         render.run();
         return column;
     }
@@ -307,15 +441,37 @@ final class GboardCustomStickersViews {
     }
 
     /** Decodes off the UI thread; a detached view simply ignores late posts. */
-    private static void loadThumbnails(List<ImageView> images, List<File> files) {
+    /** {@code photoBadges}, when given, are shown for thumbnails without any transparency. */
+    private static void loadThumbnails(List<ImageView> images, List<File> files,
+            List<View> photoBadges) {
         if (images.isEmpty()) return;
         new Thread(() -> {
             for (int i = 0; i < files.size(); i++) {
                 Bitmap bitmap = decodeThumbnail(files.get(i));
                 ImageView image = images.get(i);
-                if (bitmap != null) image.post(() -> image.setImageBitmap(bitmap));
+                if (bitmap == null) continue;
+                View photo = photoBadges == null ? null : photoBadges.get(i);
+                boolean opaque = photo != null && !hasTransparency(bitmap);
+                image.post(() -> {
+                    image.setImageBitmap(bitmap);
+                    if (opaque) photo.setVisibility(View.VISIBLE);
+                });
             }
         }, "GboardStickerThumbs").start();
+    }
+
+    /** Messenger shows a sticker image as a plain photo unless some of it is transparent. */
+    static boolean hasTransparency(Bitmap bitmap) {
+        if (!bitmap.hasAlpha()) return false;
+        int width = bitmap.getWidth();
+        int[] row = new int[width];
+        for (int y = 0; y < bitmap.getHeight(); y++) {
+            bitmap.getPixels(row, 0, width, 0, y, width, 1);
+            for (int pixel : row) {
+                if ((pixel >>> 24) < 0xFF) return true;
+            }
+        }
+        return false;
     }
 
     private static Bitmap decodeThumbnail(File file) {
