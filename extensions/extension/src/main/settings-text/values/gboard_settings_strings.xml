@@ -981,8 +981,16 @@
     <string name="gboard_patches_custom_stickers_create">Create sticker pack</string>
     <string name="gboard_patches_custom_stickers_name_hint">Pack name</string>
     <string name="gboard_patches_custom_stickers_usage_title">How to use</string>
-    <string name="gboard_patches_custom_stickers_usage_summary">Open Gboard\'s Stickers tab. If a pack is not shown, add it from Manage stickers. Packs without stickers are hidden.</string>
+    <string name="gboard_patches_custom_stickers_usage_summary">Open Gboard\'s Stickers tab; your packs appear first in the header. If a pack is missing, turn on Show in keyboard in that pack. Packs without stickers are hidden.</string>
     <string name="gboard_patches_custom_stickers_section_stickers">Stickers</string>
+    <string name="gboard_patches_custom_stickers_empty_summary">Create a pack, then add images to it.</string>
+    <string name="gboard_patches_custom_stickers_pack_empty_summary">Empty, add stickers to show it in the keyboard</string>
+    <string name="gboard_patches_custom_stickers_hidden">Not shown in keyboard</string>
+    <string name="gboard_patches_custom_stickers_no_stickers">No stickers yet</string>
+    <string name="gboard_patches_custom_stickers_cover">Cover</string>
+    <string name="gboard_patches_custom_stickers_section_pack">Pack</string>
+    <string name="gboard_patches_custom_stickers_show_in_keyboard">Show in keyboard</string>
+    <string name="gboard_patches_custom_stickers_show_in_keyboard_summary">Show this pack in the header of Gboard\'s Stickers tab.</string>
     <string name="gboard_patches_custom_stickers_add">Add stickers</string>
     <string name="gboard_patches_custom_stickers_add_summary">Pick one or more PNG, WebP, JPEG or GIF images, up to 8 MB each. GIFs are saved as still images.</string>
     <string name="gboard_patches_custom_stickers_rename">Rename pack</string>

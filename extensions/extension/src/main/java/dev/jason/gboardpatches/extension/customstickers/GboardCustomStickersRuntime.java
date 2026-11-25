@@ -21,6 +21,54 @@ public final class GboardCustomStickersRuntime {
 
     private GboardCustomStickersRuntime() { }
 
+    /**
+     * Whether the pack is in Gboard's "added" sticker packs, the only ones its Stickers header
+     * shows. Null when Gboard's sticker store cannot be reached.
+     */
+    public static Boolean isShownInKeyboard(Context context, String packId) {
+        try {
+            Object store = favoritesStore(context);
+            return ((List<?>) store.getClass().getMethod("b").invoke(store))
+                    .contains(PACK_ID_PREFIX + packId);
+        } catch (Throwable failure) {
+            Log.w(TAG, "Failed to read Gboard sticker favorites", failure);
+            return null;
+        }
+    }
+
+    /** Adds the pack to the front of Gboard's added packs, or removes it. */
+    public static boolean setShownInKeyboard(Context context, String packId, boolean shown) {
+        try {
+            Object store = favoritesStore(context);
+            // The store notifies its listeners even when nothing changes, so skip no-ops.
+            boolean current = ((List<?>) store.getClass().getMethod("b").invoke(store))
+                    .contains(PACK_ID_PREFIX + packId);
+            if (current != shown) {
+                store.getClass().getMethod("c", String.class, boolean.class, boolean.class)
+                        .invoke(store, PACK_ID_PREFIX + packId, shown, true);
+            }
+            return true;
+        } catch (Throwable failure) {
+            Log.w(TAG, "Failed to update Gboard sticker favorites", failure);
+            return false;
+        }
+    }
+
+    /**
+     * shortcut: obfuscated Gboard 18.5.4 path gzx.b(ctx).get().d.h = the in-memory favorites
+     * store (ikn over exp_sticker_prefs "favorites"); move to version bindings when porting.
+     * Settings and the keyboard share this process, so both see the same instance.
+     */
+    private static Object favoritesStore(Context context) throws ReflectiveOperationException {
+        ClassLoader loader = GboardCustomStickersRuntime.class.getClassLoader();
+        Class<?> supplierType = Class.forName("gzx", false, loader);
+        Object supplier = supplierType.getMethod("b", Context.class)
+                .invoke(null, context.getApplicationContext());
+        Object client = supplierType.getMethod("get").invoke(supplier);
+        Object stickerClient = client.getClass().getField("d").get(client);
+        return stickerClient.getClass().getField("h").get(stickerClient);
+    }
+
     /** Patched in before the sticker pack parser returns its ImmutableList of packs. */
     public static Object appendCustomPacks(Object stockPacks) {
         try {

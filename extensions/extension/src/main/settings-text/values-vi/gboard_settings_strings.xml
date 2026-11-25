@@ -978,8 +978,16 @@
     <string name="gboard_patches_custom_stickers_create">Tạo gói sticker</string>
     <string name="gboard_patches_custom_stickers_name_hint">Tên gói</string>
     <string name="gboard_patches_custom_stickers_usage_title">Cách dùng</string>
-    <string name="gboard_patches_custom_stickers_usage_summary">Mở thẻ Sticker của Gboard. Nếu không thấy gói, hãy thêm gói từ Quản lý sticker. Gói chưa có sticker sẽ bị ẩn.</string>
+    <string name="gboard_patches_custom_stickers_usage_summary">Mở thẻ Sticker của Gboard, các gói của bạn nằm đầu thanh gói. Nếu thiếu gói nào, hãy bật Hiện trên bàn phím trong gói đó. Gói chưa có sticker sẽ bị ẩn.</string>
     <string name="gboard_patches_custom_stickers_section_stickers">Sticker</string>
+    <string name="gboard_patches_custom_stickers_empty_summary">Tạo một gói, rồi thêm ảnh vào gói.</string>
+    <string name="gboard_patches_custom_stickers_pack_empty_summary">Trống, thêm sticker để hiện trên bàn phím</string>
+    <string name="gboard_patches_custom_stickers_hidden">Không hiện trên bàn phím</string>
+    <string name="gboard_patches_custom_stickers_no_stickers">Chưa có sticker</string>
+    <string name="gboard_patches_custom_stickers_cover">Ảnh bìa</string>
+    <string name="gboard_patches_custom_stickers_section_pack">Gói</string>
+    <string name="gboard_patches_custom_stickers_show_in_keyboard">Hiện trên bàn phím</string>
+    <string name="gboard_patches_custom_stickers_show_in_keyboard_summary">Hiện gói này trên thanh gói của thẻ Sticker trong Gboard.</string>
     <string name="gboard_patches_custom_stickers_add">Thêm sticker</string>
     <string name="gboard_patches_custom_stickers_add_summary">Chọn một hoặc nhiều ảnh PNG, WebP, JPEG hoặc GIF, mỗi ảnh tối đa 8 MB. GIF được lưu thành ảnh tĩnh.</string>
     <string name="gboard_patches_custom_stickers_rename">Đổi tên gói</string>

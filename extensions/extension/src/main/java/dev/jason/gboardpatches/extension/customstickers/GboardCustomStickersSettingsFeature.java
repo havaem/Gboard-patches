@@ -54,41 +54,61 @@ public final class GboardCustomStickersSettingsFeature
         try {
             Context hostContext = host == null ? null : host.getContext();
             if (hostContext == null) return errorScreen();
+            List<GboardCustomStickersStore.Pack> packs = GboardCustomStickersStore.load(hostContext);
             List<GboardPatchesSettingsContract.Row> packRows = new ArrayList<>();
-            for (GboardCustomStickersStore.Pack pack : GboardCustomStickersStore.load(hostContext)) {
-                packRows.add(new GboardPatchesSettingsContract.NavigationRow(
-                        pack.name, stickerCount(pack.stickers.size()), true,
-                        () -> GboardPatchesSettingsContract.openFeature(
-                                host, new PackFeature(pack.id))));
-            }
-            if (packRows.isEmpty()) {
+            if (packs.isEmpty()) {
                 packRows.add(new GboardPatchesSettingsContract.InfoRow(
                         text(R.string.gboard_patches_custom_stickers_empty, "No sticker packs yet"),
-                        "", false));
+                        text(R.string.gboard_patches_custom_stickers_empty_summary, ""), true));
+            } else {
+                List<String> summaries = new ArrayList<>();
+                for (GboardCustomStickersStore.Pack pack : packs) {
+                    summaries.add(packSummary(hostContext, pack));
+                }
+                packRows.add(new GboardPatchesSettingsContract.CustomViewRow(viewHost ->
+                        GboardCustomStickersViews.createPackList(viewHost.getContext(), packs,
+                                summaries, packId -> runSafely("open sticker pack",
+                                        () -> GboardPatchesSettingsContract.openFeature(
+                                                host, new PackFeature(packId))))));
             }
-            packRows.add(new GboardPatchesSettingsContract.ActionRow(
-                    text(R.string.gboard_patches_custom_stickers_create, "Create sticker pack"),
-                    "", true, () -> runSafely("create sticker pack", () -> createPack(host, hostContext))));
-            List<GboardPatchesSettingsContract.Row> usageRows = Collections.singletonList(
-                    new GboardPatchesSettingsContract.InfoRow(
-                            text(R.string.gboard_patches_custom_stickers_usage_title, "How to use"),
-                            text(R.string.gboard_patches_custom_stickers_usage_summary, ""), true));
             List<GboardPatchesSettingsContract.Section> sections = new ArrayList<>();
             sections.add(new GboardPatchesSettingsContract.Section(
                     text(R.string.gboard_patches_custom_stickers_section_packs, "Sticker packs"),
                     packRows));
             sections.add(new GboardPatchesSettingsContract.Section(
                     text(R.string.gboard_patches_custom_stickers_usage_title, "How to use"),
-                    usageRows));
+                    Collections.singletonList(new GboardPatchesSettingsContract.InfoRow(
+                            text(R.string.gboard_patches_custom_stickers_usage_title, "How to use"),
+                            text(R.string.gboard_patches_custom_stickers_usage_summary, ""),
+                            true))));
             return new GboardPatchesSettingsContract.Screen(
                     entryTitle, headerBadge, entryTitle, entrySummary,
                     Collections.emptyList(), sections,
                     GboardPatchesSettingsContract.RefreshPolicy.none(),
-                    GboardPatchesSettingsContract.PanelStyle.FLAT);
+                    GboardPatchesSettingsContract.PanelStyle.FLAT,
+                    new GboardPatchesSettingsContract.CommandRow(
+                            text(R.string.gboard_patches_custom_stickers_create,
+                                    "Create sticker pack"),
+                            "", true,
+                            () -> runSafely("create sticker pack",
+                                    () -> createPack(host, hostContext))));
         } catch (Throwable throwable) {
             Log.w(TAG, "Failed to render custom stickers settings", throwable);
             return errorScreen();
         }
+    }
+
+    private String packSummary(Context hostContext, GboardCustomStickersStore.Pack pack) {
+        if (pack.stickers.isEmpty()) {
+            return text(R.string.gboard_patches_custom_stickers_pack_empty_summary,
+                    "Empty, add stickers to show it in the keyboard");
+        }
+        String count = stickerCount(pack.stickers.size());
+        if (Boolean.FALSE.equals(GboardCustomStickersRuntime.isShownInKeyboard(hostContext, pack.id))) {
+            return count + " · " + text(R.string.gboard_patches_custom_stickers_hidden,
+                    "Not shown in keyboard");
+        }
+        return count;
     }
 
     private void createPack(GboardPatchesSettingsContract.FeatureHost host, Context hostContext) {
@@ -99,8 +119,12 @@ public final class GboardCustomStickersSettingsFeature
                     try {
                         GboardCustomStickersStore.Pack pack =
                                 GboardCustomStickersStore.createPack(hostContext, name);
+                        // Gboard's header lists only "added" packs; new packs start added.
+                        GboardCustomStickersRuntime.setShownInKeyboard(hostContext, pack.id, true);
                         GboardPatchesSettingsContract.refresh(host);
-                        GboardPatchesSettingsContract.openFeature(host, new PackFeature(pack.id));
+                        PackFeature packFeature = new PackFeature(pack.id);
+                        GboardPatchesSettingsContract.openFeature(host, packFeature);
+                        packFeature.addStickers(host, hostContext);
                     } catch (Throwable failure) {
                         Log.w(TAG, "Failed to create sticker pack", failure);
                         showSaveFailed(host);
@@ -108,7 +132,7 @@ public final class GboardCustomStickersSettingsFeature
                 }));
     }
 
-    /** One pack: add, rename, delete stickers, or delete the pack. */
+    /** One pack: its sticker grid, keyboard visibility, rename and delete. */
     final class PackFeature implements GboardPatchesSettingsContract.Feature {
         private final String packId;
 
@@ -139,11 +163,47 @@ public final class GboardCustomStickersSettingsFeature
                             R.string.gboard_patches_custom_stickers_pack_missing,
                             "This sticker pack no longer exists."));
                 }
+                List<GboardPatchesSettingsContract.Section> sections = new ArrayList<>();
+                List<GboardPatchesSettingsContract.Row> stickerRows = new ArrayList<>();
+                if (pack.stickers.isEmpty()) {
+                    stickerRows.add(new GboardPatchesSettingsContract.InfoRow(
+                            text(R.string.gboard_patches_custom_stickers_no_stickers,
+                                    "No stickers yet"),
+                            text(R.string.gboard_patches_custom_stickers_add_summary, ""), true));
+                } else {
+                    String itemLabel = text(
+                            R.string.gboard_patches_custom_stickers_sticker_item, "Sticker %1$d");
+                    String coverLabel = text(
+                            R.string.gboard_patches_custom_stickers_cover, "Cover");
+                    stickerRows.add(new GboardPatchesSettingsContract.CustomViewRow(viewHost ->
+                            GboardCustomStickersViews.createStickerGrid(viewHost.getContext(),
+                                    pack, itemLabel, coverLabel, (fileName, position) ->
+                                            runSafely("open sticker actions",
+                                                    () -> showStickerActions(host, hostContext,
+                                                            fileName, String.format(Locale.ROOT,
+                                                                    itemLabel, position + 1))))));
+                }
+                sections.add(new GboardPatchesSettingsContract.Section(
+                        text(R.string.gboard_patches_custom_stickers_section_stickers, "Stickers"),
+                        pack.stickers.isEmpty() ? null
+                                : text(R.string.gboard_patches_custom_stickers_grid_hint, ""),
+                        GboardPatchesSettingsContract.SectionStyle.DEFAULT, stickerRows));
+
                 List<GboardPatchesSettingsContract.Row> packRows = new ArrayList<>();
-                packRows.add(new GboardPatchesSettingsContract.ActionRow(
-                        text(R.string.gboard_patches_custom_stickers_add, "Add sticker"),
-                        text(R.string.gboard_patches_custom_stickers_add_summary, ""), true,
-                        () -> runSafely("add sticker", () -> addSticker(host, hostContext))));
+                Boolean shown = GboardCustomStickersRuntime.isShownInKeyboard(hostContext, packId);
+                if (shown != null) {
+                    packRows.add(new GboardPatchesSettingsContract.ToggleRow(
+                            text(R.string.gboard_patches_custom_stickers_show_in_keyboard,
+                                    "Show in keyboard"),
+                            text(R.string.gboard_patches_custom_stickers_show_in_keyboard_summary,
+                                    ""),
+                            true, shown, checked -> {
+                                if (!GboardCustomStickersRuntime.setShownInKeyboard(
+                                        hostContext, packId, checked)) {
+                                    showSaveFailed(host);
+                                }
+                            }));
+                }
                 packRows.add(new GboardPatchesSettingsContract.ActionRow(
                         text(R.string.gboard_patches_custom_stickers_rename, "Rename pack"),
                         pack.name, true,
@@ -153,6 +213,8 @@ public final class GboardCustomStickersSettingsFeature
                         "", true, () -> runSafely("delete sticker pack", () -> {
                             try {
                                 GboardCustomStickersStore.deletePack(hostContext, packId);
+                                GboardCustomStickersRuntime.setShownInKeyboard(
+                                        hostContext, packId, false);
                             } catch (Throwable failure) {
                                 Log.w(TAG, "Failed to delete sticker pack", failure);
                                 showSaveFailed(host);
@@ -161,35 +223,27 @@ public final class GboardCustomStickersSettingsFeature
                         }),
                         text(R.string.gboard_patches_custom_stickers_delete_pack, "Delete pack"),
                         text(R.string.gboard_patches_custom_stickers_delete_pack_confirm, "")));
-                List<GboardPatchesSettingsContract.Section> sections = new ArrayList<>();
-                sections.add(new GboardPatchesSettingsContract.Section(pack.name, packRows));
-                if (!pack.stickers.isEmpty()) {
-                    String itemLabel = text(
-                            R.string.gboard_patches_custom_stickers_sticker_item, "Sticker %1$d");
-                    sections.add(new GboardPatchesSettingsContract.Section(
-                            text(R.string.gboard_patches_custom_stickers_section_stickers, "Stickers"),
-                            text(R.string.gboard_patches_custom_stickers_grid_hint, ""),
-                            GboardPatchesSettingsContract.SectionStyle.DEFAULT,
-                            Collections.singletonList(new GboardPatchesSettingsContract.CustomViewRow(
-                                    viewHost -> GboardCustomStickersGridView.create(
-                                            viewHost.getContext(), pack, itemLabel,
-                                            fileName -> runSafely("open sticker actions",
-                                                    () -> showStickerActions(
-                                                            host, hostContext, fileName)))))));
-                }
+                sections.add(new GboardPatchesSettingsContract.Section(
+                        text(R.string.gboard_patches_custom_stickers_section_pack, "Pack"),
+                        packRows));
+
                 return new GboardPatchesSettingsContract.Screen(
                         pack.name, headerBadge, pack.name, stickerCount(pack.stickers.size()),
                         Collections.emptyList(), sections,
                         GboardPatchesSettingsContract.RefreshPolicy.none(),
-                        GboardPatchesSettingsContract.PanelStyle.FLAT);
+                        GboardPatchesSettingsContract.PanelStyle.FLAT,
+                        new GboardPatchesSettingsContract.CommandRow(
+                                text(R.string.gboard_patches_custom_stickers_add, "Add stickers"),
+                                "", true,
+                                () -> runSafely("add stickers",
+                                        () -> addStickers(host, hostContext))));
             } catch (Throwable throwable) {
                 Log.w(TAG, "Failed to render sticker pack settings", throwable);
                 return errorScreen();
             }
         }
 
-        private void addSticker(GboardPatchesSettingsContract.FeatureHost host,
-                Context hostContext) {
+        void addStickers(GboardPatchesSettingsContract.FeatureHost host, Context hostContext) {
             // Documents arrive one by one on a single worker thread, then completion runs there.
             int[] counts = new int[2];
             GboardPatchesSettingsContract.openBinaryDocuments(host, IMAGE_TYPES,
@@ -217,12 +271,11 @@ public final class GboardCustomStickersSettingsFeature
         }
 
         private void showStickerActions(GboardPatchesSettingsContract.FeatureHost host,
-                Context hostContext, String fileName) {
+                Context hostContext, String fileName, String title) {
             String setCover = "cover";
             String removeBackground = "remove_background";
             String delete = "delete";
-            GboardPatchesSettingsContract.showChoiceDialog(host,
-                    text(R.string.gboard_patches_custom_stickers_section_stickers, "Stickers"),
+            GboardPatchesSettingsContract.showChoiceDialog(host, title,
                     new String[]{
                             text(R.string.gboard_patches_custom_stickers_set_cover, "Set as cover"),
                             text(R.string.gboard_patches_custom_stickers_remove_background,

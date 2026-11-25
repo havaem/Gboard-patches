@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-11-25T15:00:00",
-  "description": "### ✨ New Features\n\n* **Gboard / Custom Stickers:** pick several images at once, see sticker previews in a grid, choose a cover image for each pack, and remove plain backgrounds (Light / Medium / Strong). Settings path: **Patches → Keys, Layout & Symbols → Custom Stickers**.\n\n### ✨ Tính năng mới\n\n* **Gboard / Custom Stickers:** chọn nhiều ảnh cùng lúc, xem trước sticker dạng lưới, chọn ảnh bìa cho từng gói và xóa nền một màu (Nhẹ / Vừa / Mạnh). Đường dẫn: **Patches → Phím, Bố cục & Biểu tượng → Sticker tùy chỉnh**.",
-  "download_url": "https://github.com/havaem/Gboard-patches/releases/download/v4.5.0-dev.6/patches-4.5.0-dev.6.mpp",
+  "created_at": "2026-11-25T17:00:00",
+  "description": "### 🐛 Fixes\n\n* **Gboard / Custom Stickers:** new packs now appear in the Stickers tab header. Each pack has a **Show in keyboard** switch; turn it on for packs created before this version.\n\n### ✨ Improvements\n\n* **Gboard / Custom Stickers:** pack list with cover thumbnails, pinned Create / Add buttons, the image picker opens right after creating a pack, and a cover badge in the sticker grid.\n\n### 🐛 Sửa lỗi\n\n* **Gboard / Custom Stickers:** gói mới đã hiện trên thanh gói của thẻ Sticker. Mỗi gói có công tắc **Hiện trên bàn phím**; với các gói tạo trước phiên bản này, hãy bật công tắc này.\n\n### ✨ Cải thiện\n\n* **Gboard / Custom Stickers:** danh sách gói có ảnh bìa, nút Tạo / Thêm được ghim ở cuối màn hình, mở chọn ảnh ngay sau khi tạo gói, và nhãn ảnh bìa trong lưới sticker.",
+  "download_url": "https://github.com/havaem/Gboard-patches/releases/download/v4.5.0-dev.7/patches-4.5.0-dev.7.mpp",
   "signature_download_url": "",
-  "version": "4.5.0-dev.6"
+  "version": "4.5.0-dev.7"
 }
