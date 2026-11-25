@@ -15,12 +15,16 @@ import android.widget.FrameLayout;
 import android.widget.GridLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.SeekBar;
 import android.widget.TextView;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /** Feature-drawn views for Custom Stickers: the pack list with covers and a pack's sticker grid. */
 final class GboardCustomStickersViews {
@@ -28,6 +32,15 @@ final class GboardCustomStickersViews {
     private static final int COLUMNS = 4;
     private static final int THUMBNAIL_PX = 192;
     private static final int TILE_COLOR = 0x14808080;
+    /** Outline width for a 512 px sticker. */
+    static final int MAX_OUTLINE_WIDTH = 32;
+    // One shared worker: previews are rebuilt on every settings refresh and while dragging.
+    private static final ExecutorService PREVIEW_RENDERER = Executors.newSingleThreadExecutor(
+            runnable -> {
+                Thread thread = new Thread(runnable, "GboardStickerPreview");
+                thread.setDaemon(true);
+                return thread;
+            });
 
     interface StickerClick {
         void onClick(String fileName, int position);
@@ -170,6 +183,128 @@ final class GboardCustomStickersViews {
         }
         loadThumbnails(images, files);
         return grid;
+    }
+
+    /**
+     * Large preview of an edited sticker on a checkerboard, so transparent areas are visible.
+     * Rendering runs off the UI thread with the same code that saves the sticker.
+     */
+    static View createEditorPreview(Context context, File file,
+            GboardCustomStickersStore.Edits edits, String backgroundNotFoundText,
+            String description, String cornerLabel, String outlineLabel,
+            EditsChosen editsChosen) {
+        float density = density(context);
+        LinearLayout column = new LinearLayout(context);
+        column.setOrientation(LinearLayout.VERTICAL);
+        column.setGravity(Gravity.CENTER_HORIZONTAL);
+        column.setPadding(0, px(density, 12), 0, px(density, 12));
+
+        ImageView image = new ImageView(context);
+        image.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        int inset = px(density, 12);
+        image.setPadding(inset, inset, inset, inset);
+        image.setBackground(checkerboard(context, density));
+        image.setContentDescription(description);
+        int size = px(density, 240);
+        column.addView(image, new LinearLayout.LayoutParams(size, size));
+
+        TextView caption = new TextView(context);
+        caption.setText(backgroundNotFoundText);
+        caption.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
+        caption.setTextColor(resolveColor(context, android.R.attr.textColorSecondary,
+                isNight(context) ? 0xFFBDBDBD : 0xFF5F6368));
+        caption.setGravity(Gravity.CENTER);
+        caption.setPadding(px(density, 16), px(density, 8), px(density, 16), 0);
+        caption.setVisibility(View.GONE);
+        column.addView(caption);
+
+        // Slider values while dragging: corner percent, outline width.
+        int[] values = {edits.cornerPercent, edits.outlineWidth};
+        AtomicInteger latest = new AtomicInteger();
+        Runnable render = () -> {
+            // Only the newest request renders; older ones are skipped while the user drags.
+            int ticket = latest.incrementAndGet();
+            GboardCustomStickersStore.Edits current = new GboardCustomStickersStore.Edits(
+                    edits.backgroundTolerance, values[0], values[1], edits.outlineColor);
+            PREVIEW_RENDERER.execute(() -> {
+                if (ticket != latest.get()) return;
+                try {
+                    GboardCustomStickersStore.Rendered rendered =
+                            GboardCustomStickersStore.render(file, current);
+                    image.post(() -> {
+                        if (ticket != latest.get()) return;
+                        image.setImageBitmap(rendered.bitmap);
+                        caption.setVisibility(
+                                rendered.backgroundNotFound ? View.VISIBLE : View.GONE);
+                    });
+                } catch (Throwable failure) {
+                    Log.w(TAG, "Failed to render sticker preview", failure);
+                }
+            });
+        };
+        Runnable chosen = () -> editsChosen.onChosen(new GboardCustomStickersStore.Edits(
+                edits.backgroundTolerance, values[0], values[1], edits.outlineColor));
+        addSlider(column, density, cornerLabel, "%", 100, values, 0, render, chosen);
+        addSlider(column, density, outlineLabel, "", MAX_OUTLINE_WIDTH, values, 1, render, chosen);
+        render.run();
+        return column;
+    }
+
+    interface EditsChosen {
+        void onChosen(GboardCustomStickersStore.Edits edits);
+    }
+
+    /** A titled SeekBar writing {@code values[slot]}; previews while dragging, commits on release. */
+    private static void addSlider(LinearLayout column, float density, String label, String unit,
+            int max, int[] values, int slot, Runnable render, Runnable chosen) {
+        Context context = column.getContext();
+        TextView title = new TextView(context);
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f);
+        title.setTextColor(resolveColor(context, android.R.attr.textColorPrimary,
+                isNight(context) ? Color.WHITE : Color.BLACK));
+        title.setPadding(px(density, 20), px(density, 16), px(density, 20), 0);
+        title.setText(label + ": " + values[slot] + unit);
+        title.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        column.addView(title, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        SeekBar bar = new SeekBar(context);
+        bar.setMax(max);
+        bar.setProgress(values[slot]);
+        bar.setContentDescription(label);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, px(density, 48));
+        params.setMargins(px(density, 8), 0, px(density, 8), 0);
+        column.addView(bar, params);
+        bar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar seekBar, int progress,
+                    boolean fromUser) {
+                values[slot] = progress;
+                title.setText(label + ": " + progress + unit);
+                if (fromUser) render.run();
+            }
+            @Override public void onStartTrackingTouch(SeekBar seekBar) { }
+            @Override public void onStopTrackingTouch(SeekBar seekBar) {
+                chosen.run();
+            }
+        });
+    }
+
+    private static android.graphics.drawable.Drawable checkerboard(Context context, float density) {
+        int cell = px(density, 8);
+        Bitmap tile = Bitmap.createBitmap(cell * 2, cell * 2, Bitmap.Config.ARGB_8888);
+        int light = isNight(context) ? 0xFF3C3C3C : 0xFFFFFFFF;
+        int dark = isNight(context) ? 0xFF2A2A2A : 0xFFE3E3E3;
+        tile.eraseColor(light);
+        android.graphics.Canvas canvas = new android.graphics.Canvas(tile);
+        android.graphics.Paint paint = new android.graphics.Paint();
+        paint.setColor(dark);
+        canvas.drawRect(0, 0, cell, cell, paint);
+        canvas.drawRect(cell, cell, cell * 2, cell * 2, paint);
+        android.graphics.drawable.BitmapDrawable drawable =
+                new android.graphics.drawable.BitmapDrawable(context.getResources(), tile);
+        drawable.setTileModeXY(android.graphics.Shader.TileMode.REPEAT,
+                android.graphics.Shader.TileMode.REPEAT);
+        return drawable;
     }
 
     /** Decodes off the UI thread; a detached view simply ignores late posts. */

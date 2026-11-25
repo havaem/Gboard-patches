@@ -59,6 +59,27 @@ final class GboardCustomStickersBackgroundRemover {
         return removed;
     }
 
+    /**
+     * Smallest box holding every visible pixel, as {left, top, right, bottom} with right and
+     * bottom exclusive; null when nothing is visible.
+     */
+    static int[] visibleBounds(int[] argb, int width, int height) {
+        int left = width;
+        int top = height;
+        int right = -1;
+        int bottom = -1;
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                if ((argb[y * width + x] >>> 24) < TRANSPARENT_ALPHA) continue;
+                if (x < left) left = x;
+                if (x > right) right = x;
+                if (y < top) top = y;
+                if (y > bottom) bottom = y;
+            }
+        }
+        return right < 0 ? null : new int[]{left, top, right + 1, bottom + 1};
+    }
+
     private static int seed(int[] argb, boolean[] background, int[] queue, int tail, int index,
             int reference, int tolerance) {
         if (background[index]) return tail;

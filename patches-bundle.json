@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-11-25T19:00:00",
-  "description": "### ✨ New Features\n\n* **Gboard / Custom Stickers:** choose which tab the emoji key opens: Emoji (default), Stickers, GIFs, or Emoticons. If the chosen tab is unavailable in an app, Gboard opens Emoji. Settings: **Custom Stickers → Keyboard → Tab opened by the emoji key**.\n\n### ✨ Tính năng mới\n\n* **Gboard / Custom Stickers:** chọn thẻ mở khi bấm phím emoji: Emoji (mặc định), Sticker, GIF hoặc Biểu tượng cảm xúc chữ. Nếu app không hỗ trợ thẻ đã chọn, Gboard mở Emoji. Cài đặt: **Sticker tùy chỉnh → Bàn phím → Thẻ mở khi bấm phím emoji**.",
-  "download_url": "https://github.com/havaem/Gboard-patches/releases/download/v4.5.0-dev.8/patches-4.5.0-dev.8.mpp",
+  "created_at": "2026-11-25T21:00:00",
+  "description": "### ✨ New Features\n\n* **Gboard / Custom Stickers:** a sticker editor. Tap a sticker to remove its background, round its corners, add an outline (width slider, four colors), set it as the cover, or delete it, with a live preview. Save replaces the sticker; Save as copy keeps the original. Edited stickers are trimmed to their content and fill the sticker box.\n* Messenger shows only images with a transparent background as stickers; use Remove background, Round corners, or Outline for other images.\n\n### ✨ Tính năng mới\n\n* **Gboard / Custom Stickers:** trình chỉnh sửa sticker. Chạm vào sticker để xóa nền, bo góc, thêm viền (thanh kéo độ dày, bốn màu), đặt làm ảnh bìa hoặc xóa, có xem trước trực tiếp. Lưu sẽ thay sticker; Lưu thành bản sao giữ ảnh gốc. Sticker đã chỉnh được cắt sát nội dung và phóng đầy khung.\n* Messenger chỉ hiện ảnh có nền trong suốt thành sticker; với ảnh khác hãy dùng Xóa nền, Bo góc hoặc Viền.",
+  "download_url": "https://github.com/havaem/Gboard-patches/releases/download/v4.5.0-dev.9/patches-4.5.0-dev.9.mpp",
   "signature_download_url": "",
-  "version": "4.5.0-dev.8"
+  "version": "4.5.0-dev.9"
 }

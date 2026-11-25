@@ -2,7 +2,9 @@ package dev.jason.gboardpatches.extension.customstickers;
 
 import org.junit.Test;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 public class GboardCustomStickersBackgroundRemoverTest {
     private static final int WHITE = 0xFFFFFFFF;
@@ -32,6 +34,17 @@ public class GboardCustomStickersBackgroundRemoverTest {
         int[] pixels = {WHITE, 0xFFC8C8C8, WHITE, WHITE};
         assertEquals(3, GboardCustomStickersBackgroundRemover.remove(pixels.clone(), 2, 2, 24));
         assertEquals(4, GboardCustomStickersBackgroundRemover.remove(pixels.clone(), 2, 2, 80));
+    }
+
+    @Test public void visibleBoundsFindTheSmallestBoxAroundContent() {
+        int[] pixels = new int[5 * 4];
+        pixels[1 * 5 + 1] = RED;
+        pixels[2 * 5 + 3] = 0x08FF0000; // faint enough to count as transparent
+        pixels[2 * 5 + 2] = RED;
+
+        assertArrayEquals(new int[]{1, 1, 3, 3},
+                GboardCustomStickersBackgroundRemover.visibleBounds(pixels, 5, 4));
+        assertNull(GboardCustomStickersBackgroundRemover.visibleBounds(new int[4], 2, 2));
     }
 
     @Test public void alreadyTransparentEdgesRemoveNothing() {

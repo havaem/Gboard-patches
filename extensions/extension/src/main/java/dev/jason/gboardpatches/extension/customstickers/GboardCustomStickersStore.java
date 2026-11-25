@@ -120,69 +120,165 @@ public final class GboardCustomStickersStore {
                 encodeSticker(source));
     }
 
-    /** Thrown when the image edges have no plain colour to remove. */
-    public static final class NoBackgroundException extends IOException {
-        NoBackgroundException() {
-            super("No plain background at the image edges");
+    /** Editor settings; outline width is given for a 512 px sticker and scaled to its size. */
+    public static final class Edits {
+        public final int backgroundTolerance;
+        /** 0 to 100; 100 rounds the shorter side fully. */
+        public final int cornerPercent;
+        public final int outlineWidth;
+        public final int outlineColor;
+
+        public Edits(int backgroundTolerance, int cornerPercent, int outlineWidth,
+                int outlineColor) {
+            this.backgroundTolerance = backgroundTolerance;
+            this.cornerPercent = cornerPercent;
+            this.outlineWidth = outlineWidth;
+            this.outlineColor = outlineColor;
+        }
+
+        public boolean isEmpty() {
+            return backgroundTolerance <= 0 && cornerPercent <= 0 && outlineWidth <= 0;
         }
     }
 
+    public static final class Rendered {
+        public final Bitmap bitmap;
+        /** Background removal was asked for but the edges had no plain colour. */
+        public final boolean backgroundNotFound;
+
+        Rendered(Bitmap bitmap, boolean backgroundNotFound) {
+            this.bitmap = bitmap;
+            this.backgroundNotFound = backgroundNotFound;
+        }
+    }
+
+    /** Applies the edits to a sticker file; used for both the live preview and saving. */
+    public static Rendered render(File file, Edits edits) throws IOException {
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inPreferredConfig = Bitmap.Config.ARGB_8888;
+        Bitmap source = BitmapFactory.decodeFile(file.getPath(), options);
+        if (source == null) throw new IOException("Sticker could not be decoded");
+        int width = source.getWidth();
+        int height = source.getHeight();
+        int[] pixels = new int[width * height];
+        source.getPixels(pixels, 0, width, 0, 0, width, height);
+        source.recycle();
+        boolean backgroundNotFound = false;
+        if (edits.backgroundTolerance > 0) {
+            int[] original = pixels.clone();
+            int removed = GboardCustomStickersBackgroundRemover.remove(
+                    pixels, width, height, edits.backgroundTolerance);
+            if (removed == 0 || removed == pixels.length) {
+                pixels = original;
+                backgroundNotFound = true;
+            }
+        }
+        // Drop empty transparent margins so the content fills the sticker after scaling below.
+        int[] bounds = GboardCustomStickersBackgroundRemover.visibleBounds(pixels, width, height);
+        if (bounds != null && (bounds[2] - bounds[0] < width || bounds[3] - bounds[1] < height)) {
+            int croppedWidth = bounds[2] - bounds[0];
+            int croppedHeight = bounds[3] - bounds[1];
+            int[] cropped = new int[croppedWidth * croppedHeight];
+            for (int y = 0; y < croppedHeight; y++) {
+                System.arraycopy(pixels, (bounds[1] + y) * width + bounds[0],
+                        cropped, y * croppedWidth, croppedWidth);
+            }
+            pixels = cropped;
+            width = croppedWidth;
+            height = croppedHeight;
+        }
+        if (edits.cornerPercent > 0) {
+            GboardCustomStickersCorners.round(pixels, width, height, edits.cornerPercent);
+        }
+        if (edits.outlineWidth > 0) {
+            int radius = Math.max(1, Math.round(
+                    edits.outlineWidth * Math.max(width, height) / (float) MAX_STICKER_EDGE_PX));
+            pixels = GboardCustomStickersOutline.apply(
+                    pixels, width, height, radius, edits.outlineColor);
+            width += 2 * radius;
+            height += 2 * radius;
+        }
+        Bitmap result = Bitmap.createBitmap(pixels, width, height, Bitmap.Config.ARGB_8888);
+        // Edited stickers always fill the 512 px box, enlarging small or cropped content.
+        float scale = (float) MAX_STICKER_EDGE_PX / Math.max(width, height);
+        if (scale != 1f) {
+            Bitmap scaled = Bitmap.createScaledBitmap(result,
+                    Math.max(1, Math.round(width * scale)),
+                    Math.max(1, Math.round(height * scale)), true);
+            result.recycle();
+            result = scaled;
+        }
+        return new Rendered(result, backgroundNotFound);
+    }
+
     /**
-     * Saves a background-removed copy right after {@code fileName}; the original is kept so a
-     * bad result is never destructive. Called off the UI thread.
+     * Saves the edited sticker, either in place of the original (keeping its position and cover
+     * role) or as a copy right after it. Called off the UI thread.
      */
-    public static synchronized void addBackgroundRemovedCopy(Context context, String packId,
-            String fileName, int tolerance) throws IOException {
+    public static synchronized void saveEdited(Context context, String packId, String fileName,
+            Edits edits, boolean asCopy) throws IOException {
         List<Pack> packs = new ArrayList<>(load(context));
         int index = indexOf(packs, packId);
         int position = packs.get(index).stickers.indexOf(fileName);
         if (position < 0) throw new IOException("Unknown sticker");
-        BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inPreferredConfig = Bitmap.Config.ARGB_8888;
-        Bitmap source = BitmapFactory.decodeFile(
-                stickerFile(context, packId, fileName).getPath(), options);
-        if (source == null) throw new IOException("Sticker could not be decoded");
+        Rendered rendered = render(stickerFile(context, packId, fileName), edits);
         Encoded encoded;
         try {
-            int width = source.getWidth();
-            int height = source.getHeight();
-            int[] pixels = new int[width * height];
-            source.getPixels(pixels, 0, width, 0, 0, width, height);
-            int removed = GboardCustomStickersBackgroundRemover.remove(
-                    pixels, width, height, tolerance);
-            if (removed == 0 || removed == pixels.length) throw new NoBackgroundException();
-            Bitmap result = Bitmap.createBitmap(pixels, width, height, Bitmap.Config.ARGB_8888);
-            try {
-                encoded = encodeBitmap(result);
-            } finally {
-                result.recycle();
-            }
+            encoded = encodeBitmap(rendered.bitmap);
         } finally {
-            source.recycle();
+            rendered.bitmap.recycle();
         }
-        insertSticker(context, packs, index, position + 1, encoded);
+        if (asCopy) {
+            insertSticker(context, packs, index, position + 1, encoded);
+        } else {
+            replaceSticker(context, packs, index, position, encoded);
+        }
     }
 
     private static void insertSticker(Context context, List<Pack> packs, int index, int position,
             Encoded encoded) throws IOException {
         Pack old = packs.get(index);
-        String fileName = newId() + "." + encoded.extension;
-        File directory = packDirectory(context, old.id);
+        File target = writeSticker(context, old.id, encoded);
+        List<String> stickers = new ArrayList<>(old.stickers);
+        stickers.add(position, target.getName());
+        packs.set(index, new Pack(old.id, old.name, stickers, old.cover));
+        saveOrDelete(context, packs, target);
+    }
+
+    private static void replaceSticker(Context context, List<Pack> packs, int index, int position,
+            Encoded encoded) throws IOException {
+        Pack old = packs.get(index);
+        File target = writeSticker(context, old.id, encoded);
+        List<String> stickers = new ArrayList<>(old.stickers);
+        String previous = stickers.set(position, target.getName());
+        String cover = previous.equals(old.cover) ? target.getName() : old.cover;
+        packs.set(index, new Pack(old.id, old.name, stickers, cover));
+        saveOrDelete(context, packs, target);
+        // Only drop the old image once the index no longer points at it.
+        //noinspection ResultOfMethodCallIgnored
+        stickerFile(context, old.id, previous).delete();
+    }
+
+    private static File writeSticker(Context context, String packId, Encoded encoded)
+            throws IOException {
+        File directory = packDirectory(context, packId);
         if (!directory.isDirectory() && !directory.mkdirs()) {
             throw new IOException("Sticker folder could not be created");
         }
-        File target = new File(directory, fileName);
+        File target = new File(directory, newId() + "." + encoded.extension);
         try (FileOutputStream output = new FileOutputStream(target)) {
             output.write(encoded.bytes);
         }
-        List<String> stickers = new ArrayList<>(old.stickers);
-        stickers.add(position, fileName);
-        packs.set(index, new Pack(old.id, old.name, stickers, old.cover));
+        return target;
+    }
+
+    private static void saveOrDelete(Context context, List<Pack> packs, File written)
+            throws IOException {
         try {
             save(context, packs);
         } catch (IOException failure) {
             //noinspection ResultOfMethodCallIgnored
-            target.delete();
+            written.delete();
             throw failure;
         }
     }

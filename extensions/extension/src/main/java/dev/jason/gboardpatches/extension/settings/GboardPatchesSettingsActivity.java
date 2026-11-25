@@ -339,6 +339,15 @@ public final class GboardPatchesSettingsActivity extends Activity
     }
 
     @Override
+    public void closeFeature() {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            runOnUiThread(this::closeFeature);
+            return;
+        }
+        if (settingsOrchestrator.snapshot().getCurrent() != null) navigateBack();
+    }
+
+    @Override
     public void submit(GboardPatchesSettingsContract.Intent intent) {
         applyOrchestration(settingsOrchestrator.accept(
                 GboardPatchesSettingsOrchestrator.Event.featureIntent(intent)));

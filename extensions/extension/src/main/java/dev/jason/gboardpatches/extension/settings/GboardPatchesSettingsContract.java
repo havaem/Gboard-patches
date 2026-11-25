@@ -79,6 +79,11 @@ public final class GboardPatchesSettingsContract {
 
         void openFeature(Feature feature);
 
+        /** Leaves the current feature screen, like the Back button. */
+        default void closeFeature() {
+            throw new UnsupportedOperationException("Closing a feature is unavailable");
+        }
+
         default void openExternalUrl(String url) {
             throw new UnsupportedOperationException("External URL navigation is unavailable");
         }
@@ -183,6 +188,10 @@ public final class GboardPatchesSettingsContract {
 
     public static void openFeature(FeatureHost host, Feature feature) {
         submit(host, adapter -> adapter.openFeature(feature));
+    }
+
+    public static void closeFeature(FeatureHost host) {
+        submit(host, Host::closeFeature);
     }
 
     public static void openExternalUrl(FeatureHost host, String url) {

@@ -67,7 +67,7 @@ public class GboardCustomStickersStoreTest {
         assertEquals(stickers.get(0), GboardCustomStickersStore.findPack(context, pack.id).cover);
     }
 
-    @Test public void backgroundRemovalAddsCopyNextToOriginal() throws Exception {
+    @Test public void editsReplaceInPlaceOrSaveACopyNextToTheOriginal() throws Exception {
         GboardCustomStickersStore.Pack pack = GboardCustomStickersStore.createPack(context, "Cut");
         Bitmap bitmap = Bitmap.createBitmap(40, 40, Bitmap.Config.ARGB_8888);
         bitmap.eraseColor(Color.WHITE);
@@ -80,7 +80,9 @@ public class GboardCustomStickersStoreTest {
         GboardCustomStickersStore.addSticker(context, pack.id, png(8, 8));
         List<String> before = GboardCustomStickersStore.findPack(context, pack.id).stickers;
 
-        GboardCustomStickersStore.addBackgroundRemovedCopy(context, pack.id, before.get(0), 48);
+        GboardCustomStickersStore.Edits removeBackground =
+                new GboardCustomStickersStore.Edits(48, 0, 0, Color.WHITE);
+        GboardCustomStickersStore.saveEdited(context, pack.id, before.get(0), removeBackground, true);
 
         List<String> after = GboardCustomStickersStore.findPack(context, pack.id).stickers;
         assertEquals(3, after.size());
@@ -88,14 +90,28 @@ public class GboardCustomStickersStoreTest {
         assertEquals(before.get(1), after.get(2));
         Bitmap cut = BitmapFactory.decodeFile(
                 GboardCustomStickersStore.stickerFile(context, pack.id, after.get(1)).getPath());
-        assertEquals(0, Color.alpha(cut.getPixel(0, 0)));
-        assertEquals(Color.BLUE, cut.getPixel(20, 20));
+        // The background is gone and the cropped blue square is enlarged to fill the sticker.
+        assertEquals(GboardCustomStickersStore.MAX_STICKER_EDGE_PX, cut.getWidth());
+        assertEquals(Color.BLUE, cut.getPixel(0, 0));
+        assertEquals(Color.BLUE, cut.getPixel(256, 256));
 
-        // A solid image has nothing that is not background.
-        assertThrows(GboardCustomStickersStore.NoBackgroundException.class,
-                () -> GboardCustomStickersStore.addBackgroundRemovedCopy(
-                        context, pack.id, before.get(1), 48));
-        assertEquals(3, GboardCustomStickersStore.findPack(context, pack.id).stickers.size());
+        // Replacing keeps the position and moves the cover role to the new file.
+        GboardCustomStickersStore.setCover(context, pack.id, before.get(0));
+        File original = GboardCustomStickersStore.stickerFile(context, pack.id, before.get(0));
+        GboardCustomStickersStore.saveEdited(context, pack.id, before.get(0),
+                new GboardCustomStickersStore.Edits(0, 20, 8, Color.WHITE), false);
+        GboardCustomStickersStore.Pack replaced = GboardCustomStickersStore.findPack(context, pack.id);
+        assertEquals(3, replaced.stickers.size());
+        assertNotEquals(before.get(0), replaced.stickers.get(0));
+        assertEquals(replaced.stickers.get(0), replaced.cover);
+        assertFalse(original.exists());
+
+        // A solid image has no background to remove; the preview reports it, pixels stay.
+        GboardCustomStickersStore.Rendered solid = GboardCustomStickersStore.render(
+                GboardCustomStickersStore.stickerFile(context, pack.id, before.get(1)),
+                removeBackground);
+        assertTrue(solid.backgroundNotFound);
+        assertEquals(Color.BLUE, solid.bitmap.getPixel(0, 0));
     }
 
     @Test public void rejectsEmptyNamesAndNonImages() throws Exception {
