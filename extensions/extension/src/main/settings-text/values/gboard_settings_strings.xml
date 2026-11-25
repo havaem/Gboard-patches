@@ -972,7 +972,7 @@
     <string name="gboard_clipboard_select_all_summary">Select multiple clipboard items, then tap Delete to remove them together.</string>
     <string name="gboard_clipboard_exclude_pinned">Exclude pinned clips</string>
     <string name="gboard_patches_custom_stickers_title">Custom Stickers</string>
-    <string name="gboard_patches_custom_stickers_summary">Create sticker packs and use them in Gboard's Stickers tab.</string>
+    <string name="gboard_patches_custom_stickers_summary">Create sticker packs and use them in Gboard\'s Stickers tab.</string>
     <string name="gboard_patches_custom_stickers_error_title">Custom Stickers unavailable</string>
     <string name="gboard_patches_custom_stickers_error_summary">The sticker pack screen failed to load. Reopen Gboard settings and try again.</string>
     <string name="gboard_patches_custom_stickers_section_packs">Sticker packs</string>
@@ -981,7 +981,7 @@
     <string name="gboard_patches_custom_stickers_create">Create sticker pack</string>
     <string name="gboard_patches_custom_stickers_name_hint">Pack name</string>
     <string name="gboard_patches_custom_stickers_usage_title">How to use</string>
-    <string name="gboard_patches_custom_stickers_usage_summary">Open Gboard's Stickers tab. If a pack is not shown, add it from Manage stickers. Packs without stickers are hidden.</string>
+    <string name="gboard_patches_custom_stickers_usage_summary">Open Gboard\'s Stickers tab. If a pack is not shown, add it from Manage stickers. Packs without stickers are hidden.</string>
     <string name="gboard_patches_custom_stickers_section_stickers">Stickers</string>
     <string name="gboard_patches_custom_stickers_add">Add sticker</string>
     <string name="gboard_patches_custom_stickers_add_summary">PNG, WebP, JPEG or GIF, up to 8 MB. GIFs are saved as still images.</string>
