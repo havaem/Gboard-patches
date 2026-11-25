@@ -51,7 +51,7 @@ public final class GboardCustomStickersRuntime {
                 File file = GboardCustomStickersStore.stickerFile(context, pack.id, fileName);
                 if (!file.isFile()) continue;
                 Uri uri = Uri.fromFile(file);
-                if (cover == null) cover = uri;
+                if (cover == null || fileName.equals(pack.cover)) cover = uri;
                 stickers.add(types.newSticker(pack.id + "/" + fileName, uri, pack.name, noKeywords));
             }
             // Gboard rejects packs without stickers, so empty packs stay hidden.

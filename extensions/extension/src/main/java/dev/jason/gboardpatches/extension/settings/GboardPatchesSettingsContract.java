@@ -138,6 +138,15 @@ public final class GboardPatchesSettingsContract {
             throw new UnsupportedOperationException("Bounded document import is unavailable");
         }
 
+        /**
+         * Multi-select bounded import. Each document is handed to {@code documentConsumer} in turn
+         * on a worker thread; {@code completion} runs there after the last one.
+         */
+        default void openBinaryDocuments(String[] mimeTypes, int maxBytes,
+                BinaryDocumentConsumer documentConsumer, Runnable completion) {
+            throw new UnsupportedOperationException("Multi-document import is unavailable");
+        }
+
         default void requestTargetRestart() {
             throw new UnsupportedOperationException("Target restart is unavailable");
         }
@@ -250,6 +259,12 @@ public final class GboardPatchesSettingsContract {
     public static void openBinaryDocument(FeatureHost host, String[] mimeTypes, int maxBytes,
             BinaryDocumentConsumer documentConsumer) {
         submit(host, adapter -> adapter.openBinaryDocument(mimeTypes, maxBytes, documentConsumer));
+    }
+
+    public static void openBinaryDocuments(FeatureHost host, String[] mimeTypes, int maxBytes,
+            BinaryDocumentConsumer documentConsumer, Runnable completion) {
+        submit(host, adapter ->
+                adapter.openBinaryDocuments(mimeTypes, maxBytes, documentConsumer, completion));
     }
 
     public static void requestTargetRestart(FeatureHost host) {

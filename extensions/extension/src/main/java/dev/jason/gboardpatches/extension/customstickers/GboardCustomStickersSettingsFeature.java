@@ -161,31 +161,21 @@ public final class GboardCustomStickersSettingsFeature
                         }),
                         text(R.string.gboard_patches_custom_stickers_delete_pack, "Delete pack"),
                         text(R.string.gboard_patches_custom_stickers_delete_pack_confirm, "")));
-                List<GboardPatchesSettingsContract.Row> stickerRows = new ArrayList<>();
-                for (int i = 0; i < pack.stickers.size(); i++) {
-                    String fileName = pack.stickers.get(i);
-                    String title = String.format(Locale.ROOT, text(
-                            R.string.gboard_patches_custom_stickers_sticker_item, "Sticker %1$d"), i + 1);
-                    stickerRows.add(new GboardPatchesSettingsContract.DangerRow(
-                            title, "", true, () -> runSafely("delete sticker", () -> {
-                                try {
-                                    GboardCustomStickersStore.deleteSticker(
-                                            hostContext, packId, fileName);
-                                } catch (Throwable failure) {
-                                    Log.w(TAG, "Failed to delete sticker", failure);
-                                    showSaveFailed(host);
-                                }
-                                GboardPatchesSettingsContract.refresh(host);
-                            }),
-                            title,
-                            text(R.string.gboard_patches_custom_stickers_delete_sticker_confirm, "")));
-                }
                 List<GboardPatchesSettingsContract.Section> sections = new ArrayList<>();
                 sections.add(new GboardPatchesSettingsContract.Section(pack.name, packRows));
-                if (!stickerRows.isEmpty()) {
+                if (!pack.stickers.isEmpty()) {
+                    String itemLabel = text(
+                            R.string.gboard_patches_custom_stickers_sticker_item, "Sticker %1$d");
                     sections.add(new GboardPatchesSettingsContract.Section(
                             text(R.string.gboard_patches_custom_stickers_section_stickers, "Stickers"),
-                            stickerRows));
+                            text(R.string.gboard_patches_custom_stickers_grid_hint, ""),
+                            GboardPatchesSettingsContract.SectionStyle.DEFAULT,
+                            Collections.singletonList(new GboardPatchesSettingsContract.CustomViewRow(
+                                    viewHost -> GboardCustomStickersGridView.create(
+                                            viewHost.getContext(), pack, itemLabel,
+                                            fileName -> runSafely("open sticker actions",
+                                                    () -> showStickerActions(
+                                                            host, hostContext, fileName)))))));
                 }
                 return new GboardPatchesSettingsContract.Screen(
                         pack.name, headerBadge, pack.name, stickerCount(pack.stickers.size()),
@@ -200,21 +190,98 @@ public final class GboardCustomStickersSettingsFeature
 
         private void addSticker(GboardPatchesSettingsContract.FeatureHost host,
                 Context hostContext) {
-            GboardPatchesSettingsContract.openBinaryDocument(host, IMAGE_TYPES,
+            // Documents arrive one by one on a single worker thread, then completion runs there.
+            int[] counts = new int[2];
+            GboardPatchesSettingsContract.openBinaryDocuments(host, IMAGE_TYPES,
                     GboardCustomStickersStore.MAX_IMPORT_BYTES, document -> {
                         try {
                             GboardCustomStickersStore.addSticker(
                                     hostContext, packId, document.getData());
-                            GboardPatchesSettingsContract.showMessage(host, text(
-                                    R.string.gboard_patches_custom_stickers_added, "Sticker added."));
+                            counts[0]++;
                         } catch (Throwable failure) {
                             Log.w(TAG, "Failed to add sticker", failure);
-                            GboardPatchesSettingsContract.showMessage(host, text(
-                                    R.string.gboard_patches_custom_stickers_add_failed,
-                                    "Could not add this image."));
+                            counts[1]++;
                         }
+                    }, () -> {
+                        String message = counts[1] == 0
+                                ? String.format(Locale.ROOT, text(
+                                        R.string.gboard_patches_custom_stickers_added,
+                                        "%1$d stickers added."), counts[0])
+                                : String.format(Locale.ROOT, text(
+                                        R.string.gboard_patches_custom_stickers_add_failed,
+                                        "%1$d added, %2$d could not be added."),
+                                        counts[0], counts[1]);
+                        GboardPatchesSettingsContract.showMessage(host, message);
                         GboardPatchesSettingsContract.refresh(host);
                     });
+        }
+
+        private void showStickerActions(GboardPatchesSettingsContract.FeatureHost host,
+                Context hostContext, String fileName) {
+            String setCover = "cover";
+            String removeBackground = "remove_background";
+            String delete = "delete";
+            GboardPatchesSettingsContract.showChoiceDialog(host,
+                    text(R.string.gboard_patches_custom_stickers_section_stickers, "Stickers"),
+                    new String[]{
+                            text(R.string.gboard_patches_custom_stickers_set_cover, "Set as cover"),
+                            text(R.string.gboard_patches_custom_stickers_remove_background,
+                                    "Remove background"),
+                            text(R.string.gboard_patches_custom_stickers_delete_sticker,
+                                    "Delete sticker")},
+                    new String[]{setCover, removeBackground, delete}, null, null, null,
+                    value -> runSafely("apply sticker action", () -> {
+                        if (removeBackground.equals(value)) {
+                            chooseBackgroundStrength(host, hostContext, fileName);
+                            return;
+                        }
+                        try {
+                            if (setCover.equals(value)) {
+                                GboardCustomStickersStore.setCover(hostContext, packId, fileName);
+                            } else if (delete.equals(value)) {
+                                GboardCustomStickersStore.deleteSticker(
+                                        hostContext, packId, fileName);
+                            }
+                        } catch (Throwable failure) {
+                            Log.w(TAG, "Failed to update sticker", failure);
+                            showSaveFailed(host);
+                        }
+                        GboardPatchesSettingsContract.refresh(host);
+                    }));
+        }
+
+        private void chooseBackgroundStrength(GboardPatchesSettingsContract.FeatureHost host,
+                Context hostContext, String fileName) {
+            GboardPatchesSettingsContract.showChoiceDialog(host,
+                    text(R.string.gboard_patches_custom_stickers_remove_background_title,
+                            "Remove background"),
+                    new String[]{
+                            text(R.string.gboard_patches_custom_stickers_strength_light, "Light"),
+                            text(R.string.gboard_patches_custom_stickers_strength_medium, "Medium"),
+                            text(R.string.gboard_patches_custom_stickers_strength_strong, "Strong")},
+                    new String[]{"24", "48", "80"}, null, null, null,
+                    value -> runSafely("start background removal", () -> {
+                        int tolerance = Integer.parseInt(value);
+                        // Decoding and re-encoding a 512 px sticker is too slow for the UI thread.
+                        new Thread(() -> runSafely("remove sticker background", () -> {
+                            String message;
+                            try {
+                                GboardCustomStickersStore.addBackgroundRemovedCopy(
+                                        hostContext, packId, fileName, tolerance);
+                                message = text(R.string.gboard_patches_custom_stickers_background_removed,
+                                        "Background removed. The result was added next to the original.");
+                            } catch (GboardCustomStickersStore.NoBackgroundException none) {
+                                message = text(R.string.gboard_patches_custom_stickers_background_not_found,
+                                        "No plain background found at the image edges.");
+                            } catch (Throwable failure) {
+                                Log.w(TAG, "Failed to remove sticker background", failure);
+                                message = text(R.string.gboard_patches_custom_stickers_save_failed,
+                                        "Could not save the change.");
+                            }
+                            GboardPatchesSettingsContract.showMessage(host, message);
+                            GboardPatchesSettingsContract.refresh(host);
+                        }), "GboardStickerBackground").start();
+                    }));
         }
 
         private void rename(GboardPatchesSettingsContract.FeatureHost host, Context hostContext,

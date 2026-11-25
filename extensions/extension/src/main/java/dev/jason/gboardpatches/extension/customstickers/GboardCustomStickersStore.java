@@ -43,11 +43,15 @@ public final class GboardCustomStickersStore {
         public final String id;
         public final String name;
         public final List<String> stickers;
+        /** The pack's cover sticker; the first sticker when none was chosen. Null if empty. */
+        public final String cover;
 
-        Pack(String id, String name, List<String> stickers) {
+        Pack(String id, String name, List<String> stickers, String cover) {
             this.id = id;
             this.name = name;
             this.stickers = Collections.unmodifiableList(new ArrayList<>(stickers));
+            this.cover = cover != null && stickers.contains(cover) ? cover
+                    : stickers.isEmpty() ? null : stickers.get(0);
         }
     }
 
@@ -73,7 +77,7 @@ public final class GboardCustomStickersStore {
         String cleaned = cleanName(name);
         if (cleaned.isEmpty()) throw new IOException("Pack name is empty");
         List<Pack> packs = new ArrayList<>(load(context));
-        Pack pack = new Pack(newId(), cleaned, Collections.emptyList());
+        Pack pack = new Pack(newId(), cleaned, Collections.emptyList(), null);
         packs.add(pack);
         save(context, packs);
         return pack;
@@ -86,7 +90,17 @@ public final class GboardCustomStickersStore {
         List<Pack> packs = new ArrayList<>(load(context));
         int index = indexOf(packs, packId);
         Pack old = packs.get(index);
-        packs.set(index, new Pack(old.id, cleaned, old.stickers));
+        packs.set(index, new Pack(old.id, cleaned, old.stickers, old.cover));
+        save(context, packs);
+    }
+
+    public static synchronized void setCover(Context context, String packId, String fileName)
+            throws IOException {
+        List<Pack> packs = new ArrayList<>(load(context));
+        int index = indexOf(packs, packId);
+        Pack old = packs.get(index);
+        if (!old.stickers.contains(fileName)) throw new IOException("Unknown sticker");
+        packs.set(index, new Pack(old.id, old.name, old.stickers, fileName));
         save(context, packs);
     }
 
@@ -102,9 +116,58 @@ public final class GboardCustomStickersStore {
             throws IOException {
         List<Pack> packs = new ArrayList<>(load(context));
         int index = indexOf(packs, packId);
-        Encoded encoded = encodeSticker(source);
+        insertSticker(context, packs, index, packs.get(index).stickers.size(),
+                encodeSticker(source));
+    }
+
+    /** Thrown when the image edges have no plain colour to remove. */
+    public static final class NoBackgroundException extends IOException {
+        NoBackgroundException() {
+            super("No plain background at the image edges");
+        }
+    }
+
+    /**
+     * Saves a background-removed copy right after {@code fileName}; the original is kept so a
+     * bad result is never destructive. Called off the UI thread.
+     */
+    public static synchronized void addBackgroundRemovedCopy(Context context, String packId,
+            String fileName, int tolerance) throws IOException {
+        List<Pack> packs = new ArrayList<>(load(context));
+        int index = indexOf(packs, packId);
+        int position = packs.get(index).stickers.indexOf(fileName);
+        if (position < 0) throw new IOException("Unknown sticker");
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inPreferredConfig = Bitmap.Config.ARGB_8888;
+        Bitmap source = BitmapFactory.decodeFile(
+                stickerFile(context, packId, fileName).getPath(), options);
+        if (source == null) throw new IOException("Sticker could not be decoded");
+        Encoded encoded;
+        try {
+            int width = source.getWidth();
+            int height = source.getHeight();
+            int[] pixels = new int[width * height];
+            source.getPixels(pixels, 0, width, 0, 0, width, height);
+            int removed = GboardCustomStickersBackgroundRemover.remove(
+                    pixels, width, height, tolerance);
+            if (removed == 0 || removed == pixels.length) throw new NoBackgroundException();
+            Bitmap result = Bitmap.createBitmap(pixels, width, height, Bitmap.Config.ARGB_8888);
+            try {
+                encoded = encodeBitmap(result);
+            } finally {
+                result.recycle();
+            }
+        } finally {
+            source.recycle();
+        }
+        insertSticker(context, packs, index, position + 1, encoded);
+    }
+
+    private static void insertSticker(Context context, List<Pack> packs, int index, int position,
+            Encoded encoded) throws IOException {
+        Pack old = packs.get(index);
         String fileName = newId() + "." + encoded.extension;
-        File directory = packDirectory(context, packId);
+        File directory = packDirectory(context, old.id);
         if (!directory.isDirectory() && !directory.mkdirs()) {
             throw new IOException("Sticker folder could not be created");
         }
@@ -112,10 +175,9 @@ public final class GboardCustomStickersStore {
         try (FileOutputStream output = new FileOutputStream(target)) {
             output.write(encoded.bytes);
         }
-        Pack old = packs.get(index);
         List<String> stickers = new ArrayList<>(old.stickers);
-        stickers.add(fileName);
-        packs.set(index, new Pack(old.id, old.name, stickers));
+        stickers.add(position, fileName);
+        packs.set(index, new Pack(old.id, old.name, stickers, old.cover));
         try {
             save(context, packs);
         } catch (IOException failure) {
@@ -132,7 +194,7 @@ public final class GboardCustomStickersStore {
         Pack old = packs.get(index);
         List<String> stickers = new ArrayList<>(old.stickers);
         if (!stickers.remove(fileName)) throw new IOException("Unknown sticker");
-        packs.set(index, new Pack(old.id, old.name, stickers));
+        packs.set(index, new Pack(old.id, old.name, stickers, old.cover));
         save(context, packs);
         //noinspection ResultOfMethodCallIgnored
         new File(packDirectory(context, packId), fileName).delete();
@@ -147,10 +209,12 @@ public final class GboardCustomStickersStore {
         for (Pack pack : packs) {
             JSONArray stickers = new JSONArray();
             for (String sticker : pack.stickers) stickers.put(sticker);
-            array.put(new JSONObject()
+            JSONObject item = new JSONObject()
                     .put("id", pack.id)
                     .put("name", pack.name)
-                    .put("stickers", stickers));
+                    .put("stickers", stickers);
+            if (pack.cover != null) item.put("cover", pack.cover);
+            array.put(item);
         }
         return new JSONObject().put("version", 1).put("packs", array).toString();
     }
@@ -172,7 +236,8 @@ public final class GboardCustomStickersStore {
                 String file = files.optString(j, "");
                 if (STICKER_FILE.matcher(file).matches()) stickers.add(file);
             }
-            packs.add(new Pack(id, name, stickers));
+            // Pack only accepts a cover that is one of its validated stickers.
+            packs.add(new Pack(id, name, stickers, item.optString("cover", null)));
         }
         return packs;
     }
@@ -274,21 +339,26 @@ public final class GboardCustomStickersStore {
                         Math.max(1, Math.round(decoded.getWidth() * scale)),
                         Math.max(1, Math.round(decoded.getHeight() * scale)), true);
             }
-            byte[] png = compress(scaled, Bitmap.CompressFormat.PNG, 100);
-            if (png != null && png.length <= MAX_STICKER_BYTES) return new Encoded(png, "png");
-            Bitmap.CompressFormat webp = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
-                    ? Bitmap.CompressFormat.WEBP_LOSSY : Bitmap.CompressFormat.WEBP;
-            for (int quality = 90; quality >= 50; quality -= 10) {
-                byte[] encoded = compress(scaled, webp, quality);
-                if (encoded != null && encoded.length <= MAX_STICKER_BYTES) {
-                    return new Encoded(encoded, "webp");
-                }
-            }
-            throw new IOException("Image could not be saved");
+            return encodeBitmap(scaled);
         } finally {
             if (scaled != decoded) scaled.recycle();
             decoded.recycle();
         }
+    }
+
+    /** Lossless PNG when it fits MAX_STICKER_BYTES, otherwise lossy WebP keeping alpha. */
+    private static Encoded encodeBitmap(Bitmap bitmap) throws IOException {
+        byte[] png = compress(bitmap, Bitmap.CompressFormat.PNG, 100);
+        if (png != null && png.length <= MAX_STICKER_BYTES) return new Encoded(png, "png");
+        Bitmap.CompressFormat webp = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+                ? Bitmap.CompressFormat.WEBP_LOSSY : Bitmap.CompressFormat.WEBP;
+        for (int quality = 90; quality >= 50; quality -= 10) {
+            byte[] encoded = compress(bitmap, webp, quality);
+            if (encoded != null && encoded.length <= MAX_STICKER_BYTES) {
+                return new Encoded(encoded, "webp");
+            }
+        }
+        throw new IOException("Image could not be saved");
     }
 
     private static byte[] compress(Bitmap bitmap, Bitmap.CompressFormat format, int quality) {

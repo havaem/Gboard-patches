@@ -984,14 +984,23 @@
     <string name="gboard_patches_custom_stickers_usage_summary">開啟 Gboard 的貼圖分頁。如果沒看到貼圖包，請從「管理貼圖」加入。沒有貼圖的貼圖包會被隱藏。</string>
     <string name="gboard_patches_custom_stickers_section_stickers">貼圖</string>
     <string name="gboard_patches_custom_stickers_add">新增貼圖</string>
-    <string name="gboard_patches_custom_stickers_add_summary">PNG、WebP、JPEG 或 GIF，最大 8 MB。GIF 會儲存為靜態圖片。</string>
+    <string name="gboard_patches_custom_stickers_add_summary">可一次選取多張 PNG、WebP、JPEG 或 GIF 圖片，每張最大 8 MB。GIF 會儲存為靜態圖片。</string>
     <string name="gboard_patches_custom_stickers_rename">重新命名貼圖包</string>
     <string name="gboard_patches_custom_stickers_delete_pack">刪除貼圖包</string>
     <string name="gboard_patches_custom_stickers_delete_pack_confirm">要刪除這個貼圖包和其中所有貼圖嗎？</string>
     <string name="gboard_patches_custom_stickers_sticker_item">貼圖 %1$d</string>
-    <string name="gboard_patches_custom_stickers_delete_sticker_confirm">要刪除這張貼圖嗎？</string>
-    <string name="gboard_patches_custom_stickers_added">已新增貼圖。</string>
-    <string name="gboard_patches_custom_stickers_add_failed">無法新增這張圖片。</string>
+    <string name="gboard_patches_custom_stickers_grid_hint">點選貼圖可設為貼圖包封面、去除背景或刪除。有外框的貼圖是封面。</string>
+    <string name="gboard_patches_custom_stickers_set_cover">設為封面</string>
+    <string name="gboard_patches_custom_stickers_delete_sticker">刪除貼圖</string>
+    <string name="gboard_patches_custom_stickers_remove_background">去除背景</string>
+    <string name="gboard_patches_custom_stickers_remove_background_title">去除單色背景</string>
+    <string name="gboard_patches_custom_stickers_strength_light">輕度：只去除非常接近背景的顏色</string>
+    <string name="gboard_patches_custom_stickers_strength_medium">中度</string>
+    <string name="gboard_patches_custom_stickers_strength_strong">強度：連陰影與漸層一併去除</string>
+    <string name="gboard_patches_custom_stickers_background_removed">已去除背景，結果已加在原圖旁邊。</string>
+    <string name="gboard_patches_custom_stickers_background_not_found">圖片邊緣找不到單色背景。</string>
+    <string name="gboard_patches_custom_stickers_added">已新增 %1$d 張貼圖。</string>
+    <string name="gboard_patches_custom_stickers_add_failed">已新增 %1$d 張，%2$d 張無法新增。</string>
     <string name="gboard_patches_custom_stickers_save_failed">無法儲存變更。</string>
     <string name="gboard_patches_custom_stickers_pack_missing">這個貼圖包已不存在。</string>
 </resources>

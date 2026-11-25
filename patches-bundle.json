@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-11-25T11:38:52",
-  "description": "### ✨ New Features\n\n* **Gboard:** add the **Custom Stickers** patch. Create your own sticker packs from PNG, WebP, JPEG, or GIF images under **Patches → Keyboard layout → Custom Stickers**, then use them in Gboard's Stickers tab.\n* **Gboard:** change the default app name in **Package Rename** to `GboardHavaem`.\n\n### ✨ Tính năng mới\n\n* **Gboard:** thêm patch **Custom Stickers**. Tạo gói sticker riêng từ ảnh PNG, WebP, JPEG hoặc GIF trong **Patches → Keyboard layout → Custom Stickers**, rồi dùng trong thẻ Sticker của Gboard.\n* **Gboard:** đổi tên app mặc định của **Package Rename** thành `GboardHavaem`.",
-  "download_url": "https://github.com/havaem/Gboard-patches/releases/download/v4.5.0-dev.5/patches-4.5.0-dev.5.mpp",
+  "created_at": "2026-11-25T15:00:00",
+  "description": "### ✨ New Features\n\n* **Gboard / Custom Stickers:** pick several images at once, see sticker previews in a grid, choose a cover image for each pack, and remove plain backgrounds (Light / Medium / Strong). Settings path: **Patches → Keys, Layout & Symbols → Custom Stickers**.\n\n### ✨ Tính năng mới\n\n* **Gboard / Custom Stickers:** chọn nhiều ảnh cùng lúc, xem trước sticker dạng lưới, chọn ảnh bìa cho từng gói và xóa nền một màu (Nhẹ / Vừa / Mạnh). Đường dẫn: **Patches → Phím, Bố cục & Biểu tượng → Sticker tùy chỉnh**.",
+  "download_url": "https://github.com/havaem/Gboard-patches/releases/download/v4.5.0-dev.6/patches-4.5.0-dev.6.mpp",
   "signature_download_url": "",
-  "version": "4.5.0-dev.5"
+  "version": "4.5.0-dev.6"
 }

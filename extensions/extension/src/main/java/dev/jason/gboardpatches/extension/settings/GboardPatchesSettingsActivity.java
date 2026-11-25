@@ -131,6 +131,7 @@ public final class GboardPatchesSettingsActivity extends Activity
     private static final int REQUEST_RUNTIME_PERMISSION = 0x4747;
     private static final int REQUEST_CREATE_BINARY_DOCUMENT = 0x4748;
     private static final int REQUEST_OPEN_BINARY_DOCUMENT = 0x4749;
+    private static final int REQUEST_OPEN_BINARY_DOCUMENTS = 0x474A;
     private static final int TOOLBAR_HEIGHT_DP = 56;
     private static final int TOOLBAR_SCROLLED_THRESHOLD_DP = 24;
     private static final long TOOLBAR_SCROLL_TRANSITION_MS = 200L;
@@ -239,6 +240,9 @@ public final class GboardPatchesSettingsActivity extends Activity
     private PendingBinaryDocumentWrite pendingBinaryDocumentWrite;
     private GboardPatchesSettingsContract.BinaryDocumentConsumer pendingBinaryDocumentReader;
     private int pendingBinaryDocumentLimit = Integer.MAX_VALUE;
+    private GboardPatchesSettingsContract.BinaryDocumentConsumer pendingBinaryDocumentsReader;
+    private Runnable pendingBinaryDocumentsCompletion;
+    private int pendingBinaryDocumentsLimit;
     private GboardPatchesSettingsContract.StringValueConsumer pendingDocumentTreeConsumer;
     private GboardPatchesSettingsContract.Feature lifecycleVisibleFeature;
     private boolean featureLifecycleEnabled;
@@ -1288,6 +1292,37 @@ public final class GboardPatchesSettingsActivity extends Activity
     }
 
     @Override
+    @SuppressWarnings("deprecation")
+    public void openBinaryDocuments(String[] mimeTypes, int maxBytes,
+            GboardPatchesSettingsContract.BinaryDocumentConsumer documentConsumer,
+            Runnable completion) {
+        if (documentConsumer == null) {
+            return;
+        }
+        if (maxBytes <= 0) throw new IllegalArgumentException("Document limit must be positive");
+        pendingBinaryDocumentsReader = documentConsumer;
+        pendingBinaryDocumentsCompletion = completion;
+        pendingBinaryDocumentsLimit = maxBytes;
+        String[] normalizedMimeTypes = normalizeMimeTypes(mimeTypes);
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT)
+                .addCategory(Intent.CATEGORY_OPENABLE)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                .setType(normalizedMimeTypes.length == 1 ? normalizedMimeTypes[0] : "*/*");
+        if (normalizedMimeTypes.length > 1) {
+            intent.putExtra(Intent.EXTRA_MIME_TYPES, normalizedMimeTypes);
+        }
+        try {
+            startActivityForResult(intent, REQUEST_OPEN_BINARY_DOCUMENTS);
+        } catch (Throwable throwable) {
+            pendingBinaryDocumentsReader = null;
+            pendingBinaryDocumentsCompletion = null;
+            Log.w(TAG, "Failed to launch multi-document open picker", throwable);
+            Toast.makeText(this, DOCUMENT_PICKER_FAILED, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
     public void requestTargetRestart() {
         if (Looper.myLooper() != Looper.getMainLooper()) {
             runOnUiThread(this::requestTargetRestart);
@@ -1442,6 +1477,10 @@ public final class GboardPatchesSettingsActivity extends Activity
         }
         if (requestCode == REQUEST_OPEN_BINARY_DOCUMENT) {
             handleOpenBinaryDocumentResult(resultCode, data);
+            return;
+        }
+        if (requestCode == REQUEST_OPEN_BINARY_DOCUMENTS) {
+            handleOpenBinaryDocumentsResult(resultCode, data);
         }
     }
 
@@ -1819,6 +1858,68 @@ public final class GboardPatchesSettingsActivity extends Activity
                 reportBinaryDocumentReadFailure(failure);
             }
         }
+    }
+
+    private void handleOpenBinaryDocumentsResult(int resultCode, Intent data) {
+        GboardPatchesSettingsContract.BinaryDocumentConsumer reader =
+                pendingBinaryDocumentsReader;
+        Runnable completion = pendingBinaryDocumentsCompletion;
+        int maxBytes = pendingBinaryDocumentsLimit;
+        pendingBinaryDocumentsReader = null;
+        pendingBinaryDocumentsCompletion = null;
+        List<Uri> uris = selectedDocumentUris(data);
+        if (resultCode != RESULT_OK || uris.isEmpty() || reader == null) {
+            return;
+        }
+        Runnable read = () -> {
+            Throwable readFailure = null;
+            for (Uri uri : uris) {
+                if (Thread.currentThread().isInterrupted() || isFinishing() || isDestroyed()) return;
+                GboardPatchesSettingsContract.BinaryDocument document;
+                try {
+                    document = new GboardPatchesSettingsContract.BinaryDocument(
+                            queryDisplayName(uri), getContentResolver().getType(uri),
+                            readBinaryDocument(uri, maxBytes));
+                } catch (Throwable failure) {
+                    // One unreadable file must not drop the rest of the selection.
+                    readFailure = failure;
+                    continue;
+                }
+                try {
+                    reader.accept(document);
+                } catch (Throwable failure) {
+                    Log.w(TAG, "Selected document consumer failed", failure);
+                }
+            }
+            if (readFailure != null) reportBinaryDocumentReadFailure(readFailure);
+            if (completion != null) {
+                try { completion.run(); }
+                catch (Throwable failure) { Log.w(TAG, "Document import completion failed", failure); }
+            }
+        };
+        try {
+            if (!isFinishing() && !isDestroyed()) boundedDocumentExecutor.execute(read);
+        } catch (Throwable failure) {
+            reportBinaryDocumentReadFailure(failure);
+        }
+    }
+
+    private static List<Uri> selectedDocumentUris(Intent data) {
+        List<Uri> uris = new ArrayList<>();
+        if (data == null) {
+            return uris;
+        }
+        ClipData clipData = data.getClipData();
+        if (clipData != null) {
+            for (int index = 0; index < clipData.getItemCount(); index++) {
+                ClipData.Item item = clipData.getItemAt(index);
+                if (item != null && item.getUri() != null) uris.add(item.getUri());
+            }
+        }
+        if (uris.isEmpty() && data.getData() != null) {
+            uris.add(data.getData());
+        }
+        return uris;
     }
 
     private void reportBinaryDocumentReadFailure(Throwable failure) {

@@ -981,14 +981,23 @@
     <string name="gboard_patches_custom_stickers_usage_summary">Mở thẻ Sticker của Gboard. Nếu không thấy gói, hãy thêm gói từ Quản lý sticker. Gói chưa có sticker sẽ bị ẩn.</string>
     <string name="gboard_patches_custom_stickers_section_stickers">Sticker</string>
     <string name="gboard_patches_custom_stickers_add">Thêm sticker</string>
-    <string name="gboard_patches_custom_stickers_add_summary">PNG, WebP, JPEG hoặc GIF, tối đa 8 MB. GIF được lưu thành ảnh tĩnh.</string>
+    <string name="gboard_patches_custom_stickers_add_summary">Chọn một hoặc nhiều ảnh PNG, WebP, JPEG hoặc GIF, mỗi ảnh tối đa 8 MB. GIF được lưu thành ảnh tĩnh.</string>
     <string name="gboard_patches_custom_stickers_rename">Đổi tên gói</string>
     <string name="gboard_patches_custom_stickers_delete_pack">Xóa gói</string>
     <string name="gboard_patches_custom_stickers_delete_pack_confirm">Xóa gói này cùng toàn bộ sticker trong gói?</string>
     <string name="gboard_patches_custom_stickers_sticker_item">Sticker %1$d</string>
-    <string name="gboard_patches_custom_stickers_delete_sticker_confirm">Xóa sticker này?</string>
-    <string name="gboard_patches_custom_stickers_added">Đã thêm sticker.</string>
-    <string name="gboard_patches_custom_stickers_add_failed">Không thêm được ảnh này.</string>
+    <string name="gboard_patches_custom_stickers_grid_hint">Chạm vào sticker để đặt làm ảnh bìa của gói, xóa nền hoặc xóa sticker. Sticker có viền là ảnh bìa.</string>
+    <string name="gboard_patches_custom_stickers_set_cover">Đặt làm ảnh bìa</string>
+    <string name="gboard_patches_custom_stickers_delete_sticker">Xóa sticker</string>
+    <string name="gboard_patches_custom_stickers_remove_background">Xóa nền</string>
+    <string name="gboard_patches_custom_stickers_remove_background_title">Xóa nền một màu</string>
+    <string name="gboard_patches_custom_stickers_strength_light">Nhẹ: chỉ xóa màu rất gần màu nền</string>
+    <string name="gboard_patches_custom_stickers_strength_medium">Vừa</string>
+    <string name="gboard_patches_custom_stickers_strength_strong">Mạnh: xóa cả bóng đổ và nền chuyển màu</string>
+    <string name="gboard_patches_custom_stickers_background_removed">Đã xóa nền. Kết quả được thêm ngay cạnh ảnh gốc.</string>
+    <string name="gboard_patches_custom_stickers_background_not_found">Không tìm thấy nền một màu ở viền ảnh.</string>
+    <string name="gboard_patches_custom_stickers_added">Đã thêm %1$d sticker.</string>
+    <string name="gboard_patches_custom_stickers_add_failed">Đã thêm %1$d, %2$d ảnh không thêm được.</string>
     <string name="gboard_patches_custom_stickers_save_failed">Không lưu được thay đổi.</string>
     <string name="gboard_patches_custom_stickers_pack_missing">Gói sticker này không còn tồn tại.</string>
 </resources>
