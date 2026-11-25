@@ -991,6 +991,13 @@
     <string name="gboard_patches_custom_stickers_section_pack">Pack</string>
     <string name="gboard_patches_custom_stickers_show_in_keyboard">Show in keyboard</string>
     <string name="gboard_patches_custom_stickers_show_in_keyboard_summary">Show this pack in the header of Gboard\'s Stickers tab.</string>
+    <string name="gboard_patches_custom_stickers_section_keyboard">Keyboard</string>
+    <string name="gboard_patches_custom_stickers_opening_tab">Tab opened by the emoji key</string>
+    <string name="gboard_patches_custom_stickers_opening_tab_summary">If the chosen tab is unavailable in an app, Gboard opens Emoji instead.</string>
+    <string name="gboard_patches_custom_stickers_opening_tab_stock">Emoji (default)</string>
+    <string name="gboard_patches_custom_stickers_opening_tab_sticker">Stickers</string>
+    <string name="gboard_patches_custom_stickers_opening_tab_gif">GIFs</string>
+    <string name="gboard_patches_custom_stickers_opening_tab_emoticon">Emoticons</string>
     <string name="gboard_patches_custom_stickers_add">Add stickers</string>
     <string name="gboard_patches_custom_stickers_add_summary">Pick one or more PNG, WebP, JPEG or GIF images, up to 8 MB each. GIFs are saved as still images.</string>
     <string name="gboard_patches_custom_stickers_rename">Rename pack</string>

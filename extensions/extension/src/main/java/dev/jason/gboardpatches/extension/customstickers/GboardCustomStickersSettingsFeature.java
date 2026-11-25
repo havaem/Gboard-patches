@@ -75,6 +75,30 @@ public final class GboardCustomStickersSettingsFeature
             sections.add(new GboardPatchesSettingsContract.Section(
                     text(R.string.gboard_patches_custom_stickers_section_packs, "Sticker packs"),
                     packRows));
+            String[] tabLabels = openingTabLabels();
+            String openingTab = GboardCustomStickersOpeningTab.read(hostContext);
+            String openingTitle = text(R.string.gboard_patches_custom_stickers_opening_tab,
+                    "Tab opened by the emoji key");
+            sections.add(new GboardPatchesSettingsContract.Section(
+                    text(R.string.gboard_patches_custom_stickers_section_keyboard, "Keyboard"),
+                    Collections.singletonList(new GboardPatchesSettingsContract.SelectorRow(
+                            openingTitle,
+                            text(R.string.gboard_patches_custom_stickers_opening_tab_summary, ""),
+                            tabLabels[GboardCustomStickersOpeningTab.VALUES.indexOf(openingTab)],
+                            true,
+                            () -> runSafely("choose opening tab", () ->
+                                    GboardPatchesSettingsContract.showChoiceDialog(host,
+                                            openingTitle, tabLabels,
+                                            GboardCustomStickersOpeningTab.VALUES.toArray(
+                                                    new String[0]),
+                                            openingTab, null, null,
+                                            value -> runSafely("save opening tab", () -> {
+                                                if (!GboardCustomStickersOpeningTab.write(
+                                                        hostContext, value)) {
+                                                    showSaveFailed(host);
+                                                }
+                                                GboardPatchesSettingsContract.refresh(host);
+                                            })))))));
             sections.add(new GboardPatchesSettingsContract.Section(
                     text(R.string.gboard_patches_custom_stickers_usage_title, "How to use"),
                     Collections.singletonList(new GboardPatchesSettingsContract.InfoRow(
@@ -96,6 +120,16 @@ public final class GboardCustomStickersSettingsFeature
             Log.w(TAG, "Failed to render custom stickers settings", throwable);
             return errorScreen();
         }
+    }
+
+    /** Same order as {@link GboardCustomStickersOpeningTab#VALUES}. */
+    private String[] openingTabLabels() {
+        return new String[]{
+                text(R.string.gboard_patches_custom_stickers_opening_tab_stock, "Emoji (default)"),
+                text(R.string.gboard_patches_custom_stickers_opening_tab_sticker, "Stickers"),
+                text(R.string.gboard_patches_custom_stickers_opening_tab_gif, "GIFs"),
+                text(R.string.gboard_patches_custom_stickers_opening_tab_emoticon, "Emoticons"),
+        };
     }
 
     private String packSummary(Context hostContext, GboardCustomStickersStore.Pack pack) {

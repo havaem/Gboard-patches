@@ -39,6 +39,7 @@ import dev.jason.gboardpatches.patches.gboard.features.developeroptions.gboardDe
 import dev.jason.gboardpatches.patches.gboard.features.cursortrackpad.gboardCursorTrackpadFeatureMarkerPatch
 import dev.jason.gboardpatches.patches.gboard.features.cursortrackpad.gboardCursorTrackpadFlagValuePatch
 import dev.jason.gboardpatches.patches.gboard.features.customstickers.gboardCustomStickersFeatureMarkerPatch
+import dev.jason.gboardpatches.patches.gboard.features.customstickers.gboardCustomStickersOpeningTabPatch
 import dev.jason.gboardpatches.patches.gboard.features.customstickers.gboardCustomStickersPackListPatch
 import dev.jason.gboardpatches.patches.gboard.features.customtheme.gboardCustomThemeAssetsPatch
 import dev.jason.gboardpatches.patches.gboard.features.customtheme.gboardCustomThemeFeatureMarkerPatch
@@ -628,6 +629,7 @@ val gboardCustomStickersPatch = gboardPublicResourcePatch(
         gboardPatchesSettingsPatch,
         gboardCustomStickersFeatureMarkerPatch,
         gboardCustomStickersPackListPatch,
+        gboardCustomStickersOpeningTabPatch,
     )
 }
 

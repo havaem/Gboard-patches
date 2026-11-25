@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-11-25T17:00:00",
-  "description": "### 🐛 Fixes\n\n* **Gboard / Custom Stickers:** new packs now appear in the Stickers tab header. Each pack has a **Show in keyboard** switch; turn it on for packs created before this version.\n\n### ✨ Improvements\n\n* **Gboard / Custom Stickers:** pack list with cover thumbnails, pinned Create / Add buttons, the image picker opens right after creating a pack, and a cover badge in the sticker grid.\n\n### 🐛 Sửa lỗi\n\n* **Gboard / Custom Stickers:** gói mới đã hiện trên thanh gói của thẻ Sticker. Mỗi gói có công tắc **Hiện trên bàn phím**; với các gói tạo trước phiên bản này, hãy bật công tắc này.\n\n### ✨ Cải thiện\n\n* **Gboard / Custom Stickers:** danh sách gói có ảnh bìa, nút Tạo / Thêm được ghim ở cuối màn hình, mở chọn ảnh ngay sau khi tạo gói, và nhãn ảnh bìa trong lưới sticker.",
-  "download_url": "https://github.com/havaem/Gboard-patches/releases/download/v4.5.0-dev.7/patches-4.5.0-dev.7.mpp",
+  "created_at": "2026-11-25T19:00:00",
+  "description": "### ✨ New Features\n\n* **Gboard / Custom Stickers:** choose which tab the emoji key opens: Emoji (default), Stickers, GIFs, or Emoticons. If the chosen tab is unavailable in an app, Gboard opens Emoji. Settings: **Custom Stickers → Keyboard → Tab opened by the emoji key**.\n\n### ✨ Tính năng mới\n\n* **Gboard / Custom Stickers:** chọn thẻ mở khi bấm phím emoji: Emoji (mặc định), Sticker, GIF hoặc Biểu tượng cảm xúc chữ. Nếu app không hỗ trợ thẻ đã chọn, Gboard mở Emoji. Cài đặt: **Sticker tùy chỉnh → Bàn phím → Thẻ mở khi bấm phím emoji**.",
+  "download_url": "https://github.com/havaem/Gboard-patches/releases/download/v4.5.0-dev.8/patches-4.5.0-dev.8.mpp",
   "signature_download_url": "",
-  "version": "4.5.0-dev.7"
+  "version": "4.5.0-dev.8"
 }
