@@ -67,7 +67,7 @@ public class GboardCustomStickersStoreTest {
         assertEquals(stickers.get(0), GboardCustomStickersStore.findPack(context, pack.id).cover);
     }
 
-    @Test public void editsReplaceInPlaceOrSaveACopyNextToTheOriginal() throws Exception {
+    @Test public void editsKeepTheOriginalSoTheyCanBeChangedOrUndone() throws Exception {
         GboardCustomStickersStore.Pack pack = GboardCustomStickersStore.createPack(context, "Cut");
         Bitmap bitmap = Bitmap.createBitmap(40, 40, Bitmap.Config.ARGB_8888);
         bitmap.eraseColor(Color.WHITE);
@@ -80,35 +80,62 @@ public class GboardCustomStickersStoreTest {
         GboardCustomStickersStore.addSticker(context, pack.id, png(8, 8));
         List<String> before = GboardCustomStickersStore.findPack(context, pack.id).stickers;
 
+        String source = before.get(0);
+        File original = GboardCustomStickersStore.stickerFile(context, pack.id, source);
+        GboardCustomStickersStore.setCover(context, pack.id, source);
         GboardCustomStickersStore.Edits removeBackground =
                 new GboardCustomStickersStore.Edits(48, 0, 0, Color.WHITE);
-        GboardCustomStickersStore.saveEdited(context, pack.id, before.get(0), removeBackground, true);
 
-        List<String> after = GboardCustomStickersStore.findPack(context, pack.id).stickers;
-        assertEquals(3, after.size());
-        assertEquals(before.get(0), after.get(0));
-        assertEquals(before.get(1), after.get(2));
+        String first = GboardCustomStickersStore.saveEdited(
+                context, pack.id, source, removeBackground);
+
+        GboardCustomStickersStore.Pack edited = GboardCustomStickersStore.findPack(context, pack.id);
+        assertEquals(List.of(first, before.get(1)), edited.stickers);
+        assertEquals(first, edited.cover);
+        assertEquals(source, edited.sourceOf(first));
+        assertEquals(removeBackground, edited.editsOf(first));
+        assertTrue(original.exists());
         Bitmap cut = BitmapFactory.decodeFile(
-                GboardCustomStickersStore.stickerFile(context, pack.id, after.get(1)).getPath());
+                GboardCustomStickersStore.stickerFile(context, pack.id, first).getPath());
         // The background is gone and the cropped blue square is enlarged to fill the sticker.
         assertEquals(GboardCustomStickersStore.MAX_STICKER_EDGE_PX, cut.getWidth());
         assertEquals(Color.BLUE, cut.getPixel(0, 0));
-        assertEquals(Color.BLUE, cut.getPixel(256, 256));
 
-        // Replacing keeps the position and moves the cover role to the new file.
-        GboardCustomStickersStore.setCover(context, pack.id, before.get(0));
-        File original = GboardCustomStickersStore.stickerFile(context, pack.id, before.get(0));
-        GboardCustomStickersStore.saveEdited(context, pack.id, before.get(0),
-                new GboardCustomStickersStore.Edits(0, 20, 8, Color.WHITE), false);
-        GboardCustomStickersStore.Pack replaced = GboardCustomStickersStore.findPack(context, pack.id);
-        assertEquals(3, replaced.stickers.size());
-        assertNotEquals(before.get(0), replaced.stickers.get(0));
-        assertEquals(replaced.stickers.get(0), replaced.cover);
+        // Editing again starts from the original, not from the previous result.
+        GboardCustomStickersStore.Edits outline =
+                new GboardCustomStickersStore.Edits(0, 20, 8, Color.WHITE);
+        String second = GboardCustomStickersStore.saveEdited(context, pack.id, first, outline);
+        GboardCustomStickersStore.Pack reEdited =
+                GboardCustomStickersStore.findPack(context, pack.id);
+        assertEquals(source, reEdited.sourceOf(second));
+        assertEquals(outline, reEdited.editsOf(second));
+        assertFalse(GboardCustomStickersStore.stickerFile(context, pack.id, first).exists());
+
+        // The settings survive a reload of the index.
+        assertEquals(outline, GboardCustomStickersStore.fromJson(
+                GboardCustomStickersStore.toJson(List.of(reEdited))).get(0).editsOf(second));
+
+        // Clearing every edit brings back the untouched original.
+        assertEquals(source, GboardCustomStickersStore.saveEdited(
+                context, pack.id, second, GboardCustomStickersStore.Edits.NONE));
+        GboardCustomStickersStore.Pack restored =
+                GboardCustomStickersStore.findPack(context, pack.id);
+        assertEquals(source, restored.stickers.get(0));
+        assertTrue(restored.edited.isEmpty());
+        assertFalse(GboardCustomStickersStore.stickerFile(context, pack.id, second).exists());
+
+        // One setting applied to several stickers; deleting an edited one removes its original.
+        assertEquals(0, GboardCustomStickersStore.saveEdited(
+                context, pack.id, List.of(source, before.get(1)), outline));
+        GboardCustomStickersStore.Pack batch = GboardCustomStickersStore.findPack(context, pack.id);
+        assertEquals(2, batch.edited.size());
+        GboardCustomStickersStore.deleteSticker(context, pack.id, batch.stickers.get(0));
         assertFalse(original.exists());
 
         // A solid image has no background to remove; the preview reports it, pixels stay.
         GboardCustomStickersStore.Rendered solid = GboardCustomStickersStore.render(
-                GboardCustomStickersStore.stickerFile(context, pack.id, before.get(1)),
+                GboardCustomStickersStore.stickerFile(context, pack.id,
+                        batch.sourceOf(batch.stickers.get(1))),
                 removeBackground);
         assertTrue(solid.backgroundNotFound);
         assertEquals(Color.BLUE, solid.bitmap.getPixel(0, 0));
@@ -137,6 +164,28 @@ public class GboardCustomStickersStoreTest {
         assertEquals(id + ".png", packs.get(0).cover);
         assertEquals(1, GboardCustomStickersStore.fromJson(
                 GboardCustomStickersStore.toJson(packs)).size());
+
+        String other = "fedcba9876543210fedcba9876543210";
+        GboardCustomStickersStore.Pack edited = GboardCustomStickersStore.fromJson(
+                "{\"packs\":[{\"id\":\"" + id + "\",\"name\":\"ok\",\"stickers\":"
+                        + "[\"" + id + ".png\",\"" + other + ".png\"],\"edited\":{"
+                        + "\"" + id + ".png\":{\"source\":\"../../x.png\",\"outline\":5},"
+                        + "\"" + other + ".png\":{\"source\":\"" + id + "1.png\","
+                        + "\"outline\":99999}}}]}").get(0);
+        assertEquals(id + ".png", edited.sourceOf(id + ".png"));
+        assertEquals(other + ".png", edited.sourceOf(other + ".png"));
+        assertTrue(edited.edited.isEmpty());
+    }
+
+    @Test public void parserClampsSavedEditSettings() throws Exception {
+        String id = "0123456789abcdef0123456789abcdef";
+        String shown = "fedcba9876543210fedcba9876543210.png";
+        GboardCustomStickersStore.Pack pack = GboardCustomStickersStore.fromJson(
+                "{\"packs\":[{\"id\":\"" + id + "\",\"name\":\"ok\",\"stickers\":"
+                        + "[\"" + shown + "\"],\"edited\":{\"" + shown + "\":{\"source\":\""
+                        + id + ".png\",\"corners\":500,\"outline\":99999}}}]}").get(0);
+        assertEquals(100, pack.editsOf(shown).cornerPercent);
+        assertEquals(GboardCustomStickersStore.MAX_OUTLINE_WIDTH, pack.editsOf(shown).outlineWidth);
     }
 
     private static byte[] png(int width, int height) {

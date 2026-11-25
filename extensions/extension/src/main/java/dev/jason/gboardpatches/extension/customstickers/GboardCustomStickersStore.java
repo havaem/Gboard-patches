@@ -17,7 +17,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -32,6 +34,8 @@ public final class GboardCustomStickersStore {
     static final int MAX_STICKER_EDGE_PX = 512;
     static final int MAX_STICKER_BYTES = 1024 * 1024;
     static final int MAX_NAME_LENGTH = 60;
+    /** Outline width for a 512 px sticker. */
+    static final int MAX_OUTLINE_WIDTH = 32;
     private static final long MAX_SOURCE_PIXELS = 40_000_000L;
     // Ids and file names come back from disk; only these shapes may become paths.
     private static final Pattern PACK_ID = Pattern.compile("[0-9a-f]{32}");
@@ -45,13 +49,46 @@ public final class GboardCustomStickersStore {
         public final List<String> stickers;
         /** The pack's cover sticker; the first sticker when none was chosen. Null if empty. */
         public final String cover;
+        /** Edited stickers by shown file name: their original image and settings. */
+        public final Map<String, Edited> edited;
 
-        Pack(String id, String name, List<String> stickers, String cover) {
+        Pack(String id, String name, List<String> stickers, String cover,
+                Map<String, Edited> edited) {
             this.id = id;
             this.name = name;
             this.stickers = Collections.unmodifiableList(new ArrayList<>(stickers));
             this.cover = cover != null && stickers.contains(cover) ? cover
                     : stickers.isEmpty() ? null : stickers.get(0);
+            Map<String, Edited> kept = new LinkedHashMap<>();
+            for (Map.Entry<String, Edited> entry : edited.entrySet()) {
+                String source = entry.getValue().source;
+                if (stickers.contains(entry.getKey()) && STICKER_FILE.matcher(source).matches()
+                        && !source.equals(entry.getKey())) {
+                    kept.put(entry.getKey(), entry.getValue());
+                }
+            }
+            this.edited = Collections.unmodifiableMap(kept);
+        }
+
+        public Edits editsOf(String fileName) {
+            Edited record = edited.get(fileName);
+            return record == null ? Edits.NONE : record.edits;
+        }
+
+        /** The unedited image behind a shown sticker. */
+        public String sourceOf(String fileName) {
+            Edited record = edited.get(fileName);
+            return record == null ? fileName : record.source;
+        }
+    }
+
+    public static final class Edited {
+        public final String source;
+        public final Edits edits;
+
+        Edited(String source, Edits edits) {
+            this.source = source;
+            this.edits = edits;
         }
     }
 
@@ -77,7 +114,8 @@ public final class GboardCustomStickersStore {
         String cleaned = cleanName(name);
         if (cleaned.isEmpty()) throw new IOException("Pack name is empty");
         List<Pack> packs = new ArrayList<>(load(context));
-        Pack pack = new Pack(newId(), cleaned, Collections.emptyList(), null);
+        Pack pack = new Pack(newId(), cleaned, Collections.emptyList(), null,
+                Collections.emptyMap());
         packs.add(pack);
         save(context, packs);
         return pack;
@@ -90,7 +128,7 @@ public final class GboardCustomStickersStore {
         List<Pack> packs = new ArrayList<>(load(context));
         int index = indexOf(packs, packId);
         Pack old = packs.get(index);
-        packs.set(index, new Pack(old.id, cleaned, old.stickers, old.cover));
+        packs.set(index, new Pack(old.id, cleaned, old.stickers, old.cover, old.edited));
         save(context, packs);
     }
 
@@ -100,7 +138,7 @@ public final class GboardCustomStickersStore {
         int index = indexOf(packs, packId);
         Pack old = packs.get(index);
         if (!old.stickers.contains(fileName)) throw new IOException("Unknown sticker");
-        packs.set(index, new Pack(old.id, old.name, old.stickers, fileName));
+        packs.set(index, new Pack(old.id, old.name, old.stickers, fileName, old.edited));
         save(context, packs);
     }
 
@@ -136,8 +174,26 @@ public final class GboardCustomStickersStore {
             this.outlineColor = outlineColor;
         }
 
+        public static final Edits NONE = new Edits(0, 0, 0, 0xFFFFFFFF);
+
         public boolean isEmpty() {
             return backgroundTolerance <= 0 && cornerPercent <= 0 && outlineWidth <= 0;
+        }
+
+        @Override public boolean equals(Object other) {
+            if (!(other instanceof Edits)) return false;
+            Edits that = (Edits) other;
+            if (isEmpty() && that.isEmpty()) return true;
+            return backgroundTolerance == that.backgroundTolerance
+                    && cornerPercent == that.cornerPercent
+                    && outlineWidth == that.outlineWidth
+                    && (outlineWidth == 0 || outlineColor == that.outlineColor);
+        }
+
+        @Override public int hashCode() {
+            return isEmpty() ? 0 : java.util.Objects.hash(
+                    backgroundTolerance, cornerPercent, outlineWidth,
+                    outlineWidth == 0 ? 0 : outlineColor);
         }
     }
 
@@ -212,27 +268,62 @@ public final class GboardCustomStickersStore {
     }
 
     /**
-     * Saves the edited sticker, either in place of the original (keeping its position and cover
-     * role) or as a copy right after it. Called off the UI thread.
+     * Re-renders the sticker from its original image with {@code edits}, in place: it keeps its
+     * position and cover role, and the original stays on disk so it can be edited again.
+     * Empty edits restore the original. Returns the sticker's new file name. Off the UI thread.
      */
-    public static synchronized void saveEdited(Context context, String packId, String fileName,
-            Edits edits, boolean asCopy) throws IOException {
+    public static synchronized String saveEdited(Context context, String packId, String fileName,
+            Edits edits) throws IOException {
         List<Pack> packs = new ArrayList<>(load(context));
         int index = indexOf(packs, packId);
-        int position = packs.get(index).stickers.indexOf(fileName);
+        Pack old = packs.get(index);
+        int position = old.stickers.indexOf(fileName);
         if (position < 0) throw new IOException("Unknown sticker");
-        Rendered rendered = render(stickerFile(context, packId, fileName), edits);
-        Encoded encoded;
-        try {
-            encoded = encodeBitmap(rendered.bitmap);
-        } finally {
-            rendered.bitmap.recycle();
+        if (old.editsOf(fileName).equals(edits)) return fileName;
+        String source = old.sourceOf(fileName);
+        Map<String, Edited> edited = new LinkedHashMap<>(old.edited);
+        edited.remove(fileName);
+        File written = null;
+        String shown = source;
+        if (!edits.isEmpty()) {
+            Rendered rendered = render(stickerFile(context, packId, source), edits);
+            try {
+                written = writeSticker(context, packId, encodeBitmap(rendered.bitmap));
+            } finally {
+                rendered.bitmap.recycle();
+            }
+            shown = written.getName();
+            edited.put(shown, new Edited(source, edits));
         }
-        if (asCopy) {
-            insertSticker(context, packs, index, position + 1, encoded);
+        List<String> stickers = new ArrayList<>(old.stickers);
+        stickers.set(position, shown);
+        String cover = fileName.equals(old.cover) ? shown : old.cover;
+        packs.set(index, new Pack(old.id, old.name, stickers, cover, edited));
+        if (written != null) {
+            saveOrDelete(context, packs, written);
         } else {
-            replaceSticker(context, packs, index, position, encoded);
+            save(context, packs);
         }
+        // The previous render is no longer referenced; the original is never deleted here.
+        if (!fileName.equals(source)) {
+            //noinspection ResultOfMethodCallIgnored
+            stickerFile(context, packId, fileName).delete();
+        }
+        return shown;
+    }
+
+    /** Applies the same edits to several stickers; returns how many could not be saved. */
+    public static int saveEdited(Context context, String packId, List<String> fileNames,
+            Edits edits) {
+        int failed = 0;
+        for (String fileName : fileNames) {
+            try {
+                saveEdited(context, packId, fileName, edits);
+            } catch (IOException | RuntimeException failure) {
+                failed++;
+            }
+        }
+        return failed;
     }
 
     private static void insertSticker(Context context, List<Pack> packs, int index, int position,
@@ -241,22 +332,8 @@ public final class GboardCustomStickersStore {
         File target = writeSticker(context, old.id, encoded);
         List<String> stickers = new ArrayList<>(old.stickers);
         stickers.add(position, target.getName());
-        packs.set(index, new Pack(old.id, old.name, stickers, old.cover));
+        packs.set(index, new Pack(old.id, old.name, stickers, old.cover, old.edited));
         saveOrDelete(context, packs, target);
-    }
-
-    private static void replaceSticker(Context context, List<Pack> packs, int index, int position,
-            Encoded encoded) throws IOException {
-        Pack old = packs.get(index);
-        File target = writeSticker(context, old.id, encoded);
-        List<String> stickers = new ArrayList<>(old.stickers);
-        String previous = stickers.set(position, target.getName());
-        String cover = previous.equals(old.cover) ? target.getName() : old.cover;
-        packs.set(index, new Pack(old.id, old.name, stickers, cover));
-        saveOrDelete(context, packs, target);
-        // Only drop the old image once the index no longer points at it.
-        //noinspection ResultOfMethodCallIgnored
-        stickerFile(context, old.id, previous).delete();
     }
 
     private static File writeSticker(Context context, String packId, Encoded encoded)
@@ -290,10 +367,17 @@ public final class GboardCustomStickersStore {
         Pack old = packs.get(index);
         List<String> stickers = new ArrayList<>(old.stickers);
         if (!stickers.remove(fileName)) throw new IOException("Unknown sticker");
-        packs.set(index, new Pack(old.id, old.name, stickers, old.cover));
+        Map<String, Edited> edited = new LinkedHashMap<>(old.edited);
+        edited.remove(fileName);
+        packs.set(index, new Pack(old.id, old.name, stickers, old.cover, edited));
         save(context, packs);
         //noinspection ResultOfMethodCallIgnored
-        new File(packDirectory(context, packId), fileName).delete();
+        stickerFile(context, packId, fileName).delete();
+        String source = old.sourceOf(fileName);
+        if (!source.equals(fileName)) {
+            //noinspection ResultOfMethodCallIgnored
+            stickerFile(context, packId, source).delete();
+        }
     }
 
     public static File stickerFile(Context context, String packId, String fileName) {
@@ -310,6 +394,19 @@ public final class GboardCustomStickersStore {
                     .put("name", pack.name)
                     .put("stickers", stickers);
             if (pack.cover != null) item.put("cover", pack.cover);
+            if (!pack.edited.isEmpty()) {
+                JSONObject edited = new JSONObject();
+                for (Map.Entry<String, Edited> entry : pack.edited.entrySet()) {
+                    Edits edits = entry.getValue().edits;
+                    edited.put(entry.getKey(), new JSONObject()
+                            .put("source", entry.getValue().source)
+                            .put("background", edits.backgroundTolerance)
+                            .put("corners", edits.cornerPercent)
+                            .put("outline", edits.outlineWidth)
+                            .put("color", edits.outlineColor));
+                }
+                item.put("edited", edited);
+            }
             array.put(item);
         }
         return new JSONObject().put("version", 1).put("packs", array).toString();
@@ -332,10 +429,30 @@ public final class GboardCustomStickersStore {
                 String file = files.optString(j, "");
                 if (STICKER_FILE.matcher(file).matches()) stickers.add(file);
             }
-            // Pack only accepts a cover that is one of its validated stickers.
-            packs.add(new Pack(id, name, stickers, item.optString("cover", null)));
+            Map<String, Edited> edited = new LinkedHashMap<>();
+            JSONObject editedJson = item.optJSONObject("edited");
+            if (editedJson != null) {
+                java.util.Iterator<String> keys = editedJson.keys();
+                while (keys.hasNext()) {
+                    String key = keys.next();
+                    JSONObject record = editedJson.optJSONObject(key);
+                    if (record == null) continue;
+                    // Clamped: these values size buffers when the sticker is re-rendered.
+                    edited.put(key, new Edited(record.optString("source", ""), new Edits(
+                            clamp(record.optInt("background"), 0, 255),
+                            clamp(record.optInt("corners"), 0, 100),
+                            clamp(record.optInt("outline"), 0, MAX_OUTLINE_WIDTH),
+                            record.optInt("color", 0xFFFFFFFF))));
+                }
+            }
+            // Pack keeps only a cover and edit records that point at validated sticker files.
+            packs.add(new Pack(id, name, stickers, item.optString("cover", null), edited));
         }
         return packs;
+    }
+
+    private static int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     static String cleanName(String name) {

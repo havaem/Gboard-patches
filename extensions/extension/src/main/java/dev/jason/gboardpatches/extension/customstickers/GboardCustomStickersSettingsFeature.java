@@ -326,6 +326,7 @@ public final class GboardCustomStickersSettingsFeature
         private final String packId;
         private final String fileName;
         // Kept across refreshes of this screen; nothing is written until Save.
+        private boolean loaded;
         private int backgroundTolerance;
         private int cornerPercent;
         private int outlineWidth;
@@ -365,17 +366,27 @@ public final class GboardCustomStickersSettingsFeature
                             R.string.gboard_patches_custom_stickers_sticker_missing,
                             "This sticker no longer exists."));
                 }
-                String title = String.format(Locale.ROOT, text(
-                        R.string.gboard_patches_custom_stickers_sticker_item, "Sticker %1$d"),
-                        position + 1);
+                GboardCustomStickersStore.Edits saved = pack.editsOf(fileName);
+                if (!loaded) {
+                    // Reopening an edited sticker continues from its saved settings.
+                    loaded = true;
+                    backgroundTolerance = saved.backgroundTolerance;
+                    cornerPercent = saved.cornerPercent;
+                    outlineWidth = saved.outlineWidth;
+                    if (saved.outlineWidth > 0) outlineColor = saved.outlineColor;
+                }
+                String itemLabel = text(
+                        R.string.gboard_patches_custom_stickers_sticker_item, "Sticker %1$d");
+                String title = String.format(Locale.ROOT, itemLabel, position + 1);
                 GboardCustomStickersStore.Edits edits = edits();
+                boolean changed = !edits.equals(saved);
                 List<GboardPatchesSettingsContract.Section> sections = new ArrayList<>();
                 sections.add(new GboardPatchesSettingsContract.Section(null,
                         Collections.singletonList(new GboardPatchesSettingsContract.CustomViewRow(
                                 viewHost -> GboardCustomStickersViews.createEditorPreview(
                                         viewHost.getContext(),
                                         GboardCustomStickersStore.stickerFile(
-                                                hostContext, packId, fileName),
+                                                hostContext, packId, pack.sourceOf(fileName)),
                                         edits,
                                         text(R.string.gboard_patches_custom_stickers_background_not_found,
                                                 "No plain background found at the image edges."),
@@ -421,11 +432,15 @@ public final class GboardCustomStickersSettingsFeature
                             Integer.toHexString(outlineColor),
                             value -> outlineColor = (int) Long.parseLong(value, 16)));
                 }
-                editRows.add(new GboardPatchesSettingsContract.ActionRow(
-                        text(R.string.gboard_patches_custom_stickers_save_copy, "Save as copy"),
-                        text(R.string.gboard_patches_custom_stickers_save_copy_summary, ""),
-                        !edits.isEmpty(),
-                        () -> runSafely("save sticker copy", () -> save(host, hostContext, true))));
+                if (pack.stickers.size() > 1) {
+                    editRows.add(new GboardPatchesSettingsContract.ActionRow(
+                            text(R.string.gboard_patches_custom_stickers_apply_others,
+                                    "Apply to other stickers"),
+                            text(R.string.gboard_patches_custom_stickers_apply_others_summary, ""),
+                            true,
+                            () -> runSafely("choose stickers to edit",
+                                    () -> chooseOthers(host, hostContext, pack, itemLabel))));
+                }
                 sections.add(new GboardPatchesSettingsContract.Section(
                         text(R.string.gboard_patches_custom_stickers_section_edit, "Edit"),
                         editRows));
@@ -475,9 +490,9 @@ public final class GboardCustomStickersSettingsFeature
                         GboardPatchesSettingsContract.PanelStyle.FLAT,
                         new GboardPatchesSettingsContract.CommandRow(
                                 text(R.string.gboard_patches_custom_stickers_save, "Save"),
-                                "", !edits.isEmpty(),
-                                () -> runSafely("save sticker",
-                                        () -> save(host, hostContext, false))));
+                                "", changed,
+                                () -> runSafely("save sticker", () -> save(host, hostContext,
+                                        Collections.singletonList(fileName)))));
             } catch (Throwable throwable) {
                 Log.w(TAG, "Failed to render sticker editor", throwable);
                 return errorScreen();
@@ -500,22 +515,49 @@ public final class GboardCustomStickersSettingsFeature
                                             }))));
         }
 
+        /** Lets the user pick other stickers of the pack; all are preselected. */
+        private void chooseOthers(GboardPatchesSettingsContract.FeatureHost host,
+                Context hostContext, GboardCustomStickersStore.Pack pack, String itemLabel) {
+            List<String> others = new ArrayList<>();
+            List<String> labels = new ArrayList<>();
+            for (int i = 0; i < pack.stickers.size(); i++) {
+                if (pack.stickers.get(i).equals(fileName)) continue;
+                others.add(pack.stickers.get(i));
+                labels.add(String.format(Locale.ROOT, itemLabel, i + 1));
+            }
+            boolean[] selected = new boolean[others.size()];
+            java.util.Arrays.fill(selected, true);
+            GboardPatchesSettingsContract.showMultiChoiceDialog(host,
+                    text(R.string.gboard_patches_custom_stickers_apply_others,
+                            "Apply to other stickers"),
+                    labels.toArray(new String[0]), others.toArray(new String[0]), selected,
+                    text(R.string.gboard_patches_custom_stickers_save, "Save"),
+                    chosen -> runSafely("apply edits to stickers", () -> {
+                        List<String> targets = new ArrayList<>();
+                        targets.add(fileName);
+                        targets.addAll(chosen);
+                        save(host, hostContext, targets);
+                    }));
+        }
+
+        /** Re-renders each sticker from its own original with this screen's settings. */
         private void save(GboardPatchesSettingsContract.FeatureHost host, Context hostContext,
-                boolean asCopy) {
+                List<String> fileNames) {
             GboardCustomStickersStore.Edits edits = edits();
-            // Decoding, editing and encoding a 512 px sticker is too slow for the UI thread.
-            new Thread(() -> runSafely("save edited sticker", () -> {
-                try {
-                    GboardCustomStickersStore.saveEdited(
-                            hostContext, packId, fileName, edits, asCopy);
-                    GboardPatchesSettingsContract.showMessage(host, text(
-                            R.string.gboard_patches_custom_stickers_saved, "Sticker saved."));
-                    // A replaced sticker has a new file name, so this editor is done.
-                    GboardPatchesSettingsContract.closeFeature(host);
-                } catch (Throwable failure) {
-                    Log.w(TAG, "Failed to save edited sticker", failure);
-                    showSaveFailed(host);
-                }
+            // Decoding, editing and encoding 512 px stickers is too slow for the UI thread.
+            new Thread(() -> runSafely("save edited stickers", () -> {
+                int failed = GboardCustomStickersStore.saveEdited(
+                        hostContext, packId, fileNames, edits);
+                GboardPatchesSettingsContract.showMessage(host, failed == 0
+                        ? String.format(Locale.ROOT, text(
+                                R.string.gboard_patches_custom_stickers_saved,
+                                "%1$d stickers saved."), fileNames.size())
+                        : String.format(Locale.ROOT, text(
+                                R.string.gboard_patches_custom_stickers_save_partial,
+                                "%1$d saved, %2$d could not be saved."),
+                                fileNames.size() - failed, failed));
+                // Saved stickers get new file names, so this editor is done.
+                GboardPatchesSettingsContract.closeFeature(host);
                 GboardPatchesSettingsContract.refresh(host);
             }), "GboardStickerSave").start();
         }

@@ -1021,9 +1021,10 @@
     <string name="gboard_patches_custom_stickers_section_edit">Chỉnh sửa</string>
     <string name="gboard_patches_custom_stickers_section_sticker">Sticker</string>
     <string name="gboard_patches_custom_stickers_save">Lưu</string>
-    <string name="gboard_patches_custom_stickers_save_copy">Lưu thành bản sao</string>
-    <string name="gboard_patches_custom_stickers_save_copy_summary">Giữ ảnh gốc và thêm sticker đã chỉnh ngay cạnh nó.</string>
-    <string name="gboard_patches_custom_stickers_saved">Đã lưu sticker.</string>
+    <string name="gboard_patches_custom_stickers_apply_others">Áp dụng cho sticker khác</string>
+    <string name="gboard_patches_custom_stickers_apply_others_summary">Lưu các thông số này cho sticker này và các sticker bạn chọn. Mỗi sticker được chỉnh từ ảnh gốc của nó.</string>
+    <string name="gboard_patches_custom_stickers_saved">Đã lưu %1$d sticker.</string>
+    <string name="gboard_patches_custom_stickers_save_partial">Đã lưu %1$d, %2$d sticker không lưu được.</string>
     <string name="gboard_patches_custom_stickers_already_cover">Sticker này đang là ảnh bìa của gói.</string>
     <string name="gboard_patches_custom_stickers_sticker_missing">Sticker này không còn tồn tại.</string>
     <string name="gboard_patches_custom_stickers_delete_sticker_confirm">Xóa sticker này?</string>

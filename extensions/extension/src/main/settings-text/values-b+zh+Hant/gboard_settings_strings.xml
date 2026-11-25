@@ -1024,9 +1024,10 @@
     <string name="gboard_patches_custom_stickers_section_edit">編輯</string>
     <string name="gboard_patches_custom_stickers_section_sticker">貼圖</string>
     <string name="gboard_patches_custom_stickers_save">儲存</string>
-    <string name="gboard_patches_custom_stickers_save_copy">另存為副本</string>
-    <string name="gboard_patches_custom_stickers_save_copy_summary">保留原圖，並把編輯後的貼圖加在旁邊。</string>
-    <string name="gboard_patches_custom_stickers_saved">已儲存貼圖。</string>
+    <string name="gboard_patches_custom_stickers_apply_others">套用到其他貼圖</string>
+    <string name="gboard_patches_custom_stickers_apply_others_summary">把這些設定儲存到這張貼圖和你選取的貼圖，每張都會從各自的原圖重新編輯。</string>
+    <string name="gboard_patches_custom_stickers_saved">已儲存 %1$d 張貼圖。</string>
+    <string name="gboard_patches_custom_stickers_save_partial">已儲存 %1$d 張，%2$d 張無法儲存。</string>
     <string name="gboard_patches_custom_stickers_already_cover">這張貼圖是貼圖包封面。</string>
     <string name="gboard_patches_custom_stickers_sticker_missing">這張貼圖已不存在。</string>
     <string name="gboard_patches_custom_stickers_delete_sticker_confirm">要刪除這張貼圖嗎？</string>

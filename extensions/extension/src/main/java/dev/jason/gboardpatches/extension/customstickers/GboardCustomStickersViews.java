@@ -32,8 +32,7 @@ final class GboardCustomStickersViews {
     private static final int COLUMNS = 4;
     private static final int THUMBNAIL_PX = 192;
     private static final int TILE_COLOR = 0x14808080;
-    /** Outline width for a 512 px sticker. */
-    static final int MAX_OUTLINE_WIDTH = 32;
+    private static final int MAX_OUTLINE_WIDTH = GboardCustomStickersStore.MAX_OUTLINE_WIDTH;
     // One shared worker: previews are rebuilt on every settings refresh and while dragging.
     private static final ExecutorService PREVIEW_RENDERER = Executors.newSingleThreadExecutor(
             runnable -> {

@@ -1024,9 +1024,10 @@
     <string name="gboard_patches_custom_stickers_section_edit">Edit</string>
     <string name="gboard_patches_custom_stickers_section_sticker">Sticker</string>
     <string name="gboard_patches_custom_stickers_save">Save</string>
-    <string name="gboard_patches_custom_stickers_save_copy">Save as copy</string>
-    <string name="gboard_patches_custom_stickers_save_copy_summary">Keep the original and add the edited sticker next to it.</string>
-    <string name="gboard_patches_custom_stickers_saved">Sticker saved.</string>
+    <string name="gboard_patches_custom_stickers_apply_others">Apply to other stickers</string>
+    <string name="gboard_patches_custom_stickers_apply_others_summary">Save these settings to this sticker and the stickers you pick. Each one is edited from its own original image.</string>
+    <string name="gboard_patches_custom_stickers_saved">%1$d stickers saved.</string>
+    <string name="gboard_patches_custom_stickers_save_partial">%1$d saved, %2$d could not be saved.</string>
     <string name="gboard_patches_custom_stickers_already_cover">This sticker is the pack cover.</string>
     <string name="gboard_patches_custom_stickers_sticker_missing">This sticker no longer exists.</string>
     <string name="gboard_patches_custom_stickers_delete_sticker_confirm">Delete this sticker?</string>

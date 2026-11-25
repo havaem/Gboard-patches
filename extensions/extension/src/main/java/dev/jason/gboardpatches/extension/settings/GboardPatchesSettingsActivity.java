@@ -1313,16 +1313,21 @@ public final class GboardPatchesSettingsActivity extends Activity
         pendingBinaryDocumentsCompletion = completion;
         pendingBinaryDocumentsLimit = maxBytes;
         String[] normalizedMimeTypes = normalizeMimeTypes(mimeTypes);
-        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT)
+        boolean imagesOnly = normalizedMimeTypes.length > 0;
+        for (String type : normalizedMimeTypes) imagesOnly &= type.startsWith("image/");
+        // GET_CONTENT behind a chooser lets the user pick Google Photos or a gallery app
+        // instead of always landing in the system file picker.
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT)
                 .addCategory(Intent.CATEGORY_OPENABLE)
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
-                .setType(normalizedMimeTypes.length == 1 ? normalizedMimeTypes[0] : "*/*");
+                .setType(imagesOnly ? "image/*"
+                        : normalizedMimeTypes.length == 1 ? normalizedMimeTypes[0] : "*/*");
         if (normalizedMimeTypes.length > 1) {
             intent.putExtra(Intent.EXTRA_MIME_TYPES, normalizedMimeTypes);
         }
         try {
-            startActivityForResult(intent, REQUEST_OPEN_BINARY_DOCUMENTS);
+            startActivityForResult(Intent.createChooser(intent, null),
+                    REQUEST_OPEN_BINARY_DOCUMENTS);
         } catch (Throwable throwable) {
             pendingBinaryDocumentsReader = null;
             pendingBinaryDocumentsCompletion = null;
