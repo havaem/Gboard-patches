@@ -5,10 +5,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/jasonwu1994/Gboard-patches/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/jasonwu1994/Gboard-patches?display_name=tag&label=Release&style=for-the-badge"></a>
-  <a href="https://github.com/jasonwu1994/Gboard-patches"><img alt="Total downloads" src="https://img.shields.io/github/downloads/jasonwu1994/Gboard-patches/total?label=Downloads&style=for-the-badge"></a>
-  <a href="https://morphe.software/add-source?github=jasonwu1994/Gboard-patches"><img alt="Add to Morphe" src="https://img.shields.io/badge/Morphe-Add%20Source-00A8FF?style=for-the-badge"></a>
-  <a href="https://github.com/jasonwu1994/Gboard-patches"><img alt="GitHub stars" src="https://img.shields.io/github/stars/jasonwu1994/Gboard-patches?style=social"></a>
+  <a href="https://github.com/havaem/Gboard-patches/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/havaem/Gboard-patches?display_name=tag&label=Release&style=for-the-badge"></a>
+  <a href="https://github.com/havaem/Gboard-patches"><img alt="Total downloads" src="https://img.shields.io/github/downloads/havaem/Gboard-patches/total?label=Downloads&style=for-the-badge"></a>
+  <a href="https://morphe.software/add-source?github=havaem/Gboard-patches"><img alt="Add to Morphe" src="https://img.shields.io/badge/Morphe-Add%20Source-00A8FF?style=for-the-badge"></a>
+  <a href="https://github.com/havaem/Gboard-patches"><img alt="GitHub stars" src="https://img.shields.io/github/stars/havaem/Gboard-patches?style=social"></a>
 </p>
 
 <p align="center">
@@ -18,6 +18,8 @@
 ## Overview
 
 Gboard Patches is a public Morphe source for a curated set of Gboard enhancements, including both global usability improvements and Taiwan-focused features for local input habits and day-to-day use.
+
+This is a fork of [jasonwu1994/Gboard-patches](https://github.com/jasonwu1994/Gboard-patches). It keeps following the original project and adds features of its own, such as **Custom Stickers** (your own sticker packs with a built-in editor). The default app name is **GboardHavaem**.
 
 ## Included Patches
 
@@ -111,6 +113,12 @@ Import custom ZIP themes and beautiful themes from the official Rboard repositor
   <summary><code>Custom Stickers</code></summary>
 
   Create your own sticker packs from PNG, WebP, JPEG, or GIF images and use them in Gboard's Stickers tab alongside the official packs.
+
+  - Pack cover, sticker preview grid, multi-select import (including from other apps such as Google Photos), drag-and-drop reordering, and a Show in keyboard switch per pack.
+  - Sticker editor with plain-background removal, round corners, and an outline with adjustable width and color. Edits are non-destructive, so a sticker can always be re-edited from its original, and several stickers can be edited at once.
+  - Each pack can apply default edits to newly added stickers.
+  - Export and import a pack as a ZIP file.
+  - Messenger shows only images with a transparent background as stickers, so use Remove background or Outline for photos.
 </details>
 
 <details>
@@ -328,8 +336,10 @@ Features tailored to Traditional Chinese and Zhuyin input workflows.
 
 Add this repository as a Morphe source:
 
-- [Open in Morphe](https://morphe.software/add-source?github=jasonwu1994/Gboard-patches)
-- Or manually add `https://github.com/jasonwu1994/Gboard-patches`
+- [Open in Morphe](https://morphe.software/add-source?github=havaem/Gboard-patches)
+- Or manually add `https://github.com/havaem/Gboard-patches`
+
+To use the original project without these extra features, add `https://github.com/jasonwu1994/Gboard-patches` instead.
 
 ## Build
 
