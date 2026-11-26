@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-11-24T20:58:36",
-  "description": "### ✨ New Features\n\n* **Gboard:** **Clipboard Enhancements** adds an optional **Select All** button at the far left of the clipboard edit toolbar. Enable it under **Patches → Clipboard → General**, where the setting includes a description and preview. **Select All** includes pinned clips by default. Turn on **Exclude pinned clips** to select only unpinned clips, then use Gboard’s built-in **Delete** button to remove the selection.\n\n### ✨ 新功能\n\n* **Gboard:** **剪貼簿增強**新增「編輯時新增全選按鈕」，預設關閉。可在 **Patches → 剪貼簿 → 一般**查看說明、預覽並開啟。啟用後，「全選」會出現在編輯工具列最左側，預設包含釘選項目。開啟「排除釘選」後，全選只勾選未釘選項目，再按 Gboard 原生刪除鍵即可批次刪除。",
-  "download_url": "https://github.com/jasonwu1994/Gboard-patches/releases/download/v4.5.0-dev.4/patches-4.5.0-dev.4.mpp",
+  "created_at": "2026-11-26T03:00:00",
+  "description": "### ⚡ Performance\n\n* **Gboard / Custom Stickers:** thumbnails are cached, so selecting, reordering and refreshing no longer reload every image.\n* **Gboard / Custom Stickers:** the editor reuses the decoded original and the background removal result, so dragging the corner and outline sliders is faster.\n* **Gboard / Custom Stickers:** the pack index is cached, and pack export and import stream images instead of holding the whole pack in memory.\n\n### ⚡ Hiệu năng\n\n* **Gboard / Custom Stickers:** ảnh thu nhỏ được lưu đệm, nên chọn, đổi thứ tự và làm mới không còn tải lại toàn bộ ảnh.\n* **Gboard / Custom Stickers:** editor dùng lại ảnh gốc đã giải mã và kết quả xóa nền, nên kéo thanh bo góc và viền nhanh hơn.\n* **Gboard / Custom Stickers:** danh sách gói được lưu đệm; xuất và nhập gói xử lý từng ảnh thay vì giữ cả gói trong bộ nhớ.",
+  "download_url": "https://github.com/havaem/Gboard-patches/releases/download/v4.5.0-dev.12/patches-4.5.0-dev.12.mpp",
   "signature_download_url": "",
-  "version": "4.5.0-dev.4"
+  "version": "4.5.0-dev.12"
 }

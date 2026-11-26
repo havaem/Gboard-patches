@@ -10,6 +10,7 @@ import dev.jason.gboardpatches.extension.accessibilitylayout.GboardAccessibility
 import dev.jason.gboardpatches.extension.accesspointcount.GboardAccessPointCountSettingsFeature;
 import dev.jason.gboardpatches.extension.accesspointsmenu.GboardAccessPointsMenuSettingsFeature;
 import dev.jason.gboardpatches.extension.closeproactivesuggestions.GboardCloseProactiveSuggestionsSettingsFeature;
+import dev.jason.gboardpatches.extension.customstickers.GboardCustomStickersSettingsFeature;
 import dev.jason.gboardpatches.extension.customtheme.GboardCustomThemeSettingsFeature;
 import dev.jason.gboardpatches.extension.frostedglass.GboardFrostedGlassSettingsFeature;
 import dev.jason.gboardpatches.extension.emojisize.GboardEmojiSizeSettingsFeature;
@@ -47,6 +48,7 @@ public final class GboardKeyboardLayoutSettingsGroupFeature
                         new GboardEnglishUppercaseToggleSettingsFeature(context),
                         new GboardZhuyinBottomRowWeightSettingsFeature(context),
                         new GboardSymbolFooterOrderSettingsFeature(context),
+                        new GboardCustomStickersSettingsFeature(context),
                         new GboardEmojiSizeSettingsFeature(context),
                         new GboardAccessPointsMenuSettingsFeature(context),
                         new GboardSplitKeyboardSettingsFeature(context),

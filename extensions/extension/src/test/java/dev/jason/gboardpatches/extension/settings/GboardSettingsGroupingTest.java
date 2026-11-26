@@ -120,6 +120,7 @@ public final class GboardSettingsGroupingTest {
                 "new GboardEnglishUppercaseToggleSettingsFeature(context)",
                 "new GboardZhuyinBottomRowWeightSettingsFeature(context)",
                 "new GboardSymbolFooterOrderSettingsFeature(context)",
+                "new GboardCustomStickersSettingsFeature(context)",
                 "new GboardEmojiSizeSettingsFeature(context)",
                 "new GboardAccessPointsMenuSettingsFeature(context)",
                 "new GboardSplitKeyboardSettingsFeature(context)",

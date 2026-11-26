@@ -36,6 +36,14 @@ public final class GboardPatchesSettingsContract {
         default void onHidden(FeatureHost host) {
         }
 
+        /**
+         * Called when the user goes back from this screen. Return true to stay, for example to
+         * confirm discarding unsaved changes; the feature leaves later with closeFeature().
+         */
+        default boolean onBackRequested(FeatureHost host) {
+            return false;
+        }
+
         default boolean updatesDuringKeyboardPreview() { return false; }
 
         default int getEntryIcon() {
@@ -78,6 +86,11 @@ public final class GboardPatchesSettingsContract {
         void refresh();
 
         void openFeature(Feature feature);
+
+        /** Leaves the current feature screen, like the Back button. */
+        default void closeFeature() {
+            throw new UnsupportedOperationException("Closing a feature is unavailable");
+        }
 
         default void openExternalUrl(String url) {
             throw new UnsupportedOperationException("External URL navigation is unavailable");
@@ -127,6 +140,12 @@ public final class GboardPatchesSettingsContract {
             throw new UnsupportedOperationException("Binary document export is unavailable");
         }
 
+        /** Large export: {@code writer} streams into the picked file on a worker thread. */
+        default void createStreamDocument(String fileName, String mimeType, StreamWriter writer,
+                Runnable completionAction) {
+            throw new UnsupportedOperationException("Stream document export is unavailable");
+        }
+
         default void openBinaryDocument(String[] mimeTypes,
                 BinaryDocumentConsumer documentConsumer) {
             throw new UnsupportedOperationException("Binary document import is unavailable");
@@ -136,6 +155,15 @@ public final class GboardPatchesSettingsContract {
         default void openBinaryDocument(String[] mimeTypes, int maxBytes,
                 BinaryDocumentConsumer documentConsumer) {
             throw new UnsupportedOperationException("Bounded document import is unavailable");
+        }
+
+        /**
+         * Multi-select bounded import. Each document is handed to {@code documentConsumer} in turn
+         * on a worker thread; {@code completion} runs there after the last one.
+         */
+        default void openBinaryDocuments(String[] mimeTypes, int maxBytes,
+                BinaryDocumentConsumer documentConsumer, Runnable completion) {
+            throw new UnsupportedOperationException("Multi-document import is unavailable");
         }
 
         default void requestTargetRestart() {
@@ -174,6 +202,10 @@ public final class GboardPatchesSettingsContract {
 
     public static void openFeature(FeatureHost host, Feature feature) {
         submit(host, adapter -> adapter.openFeature(feature));
+    }
+
+    public static void closeFeature(FeatureHost host) {
+        submit(host, Host::closeFeature);
     }
 
     public static void openExternalUrl(FeatureHost host, String url) {
@@ -242,6 +274,16 @@ public final class GboardPatchesSettingsContract {
                 adapter.createBinaryDocument(fileName, mimeType, data, completionAction));
     }
 
+    public static void createStreamDocument(FeatureHost host, String fileName, String mimeType,
+            StreamWriter writer, Runnable completionAction) {
+        submit(host, adapter ->
+                adapter.createStreamDocument(fileName, mimeType, writer, completionAction));
+    }
+
+    public interface StreamWriter {
+        void write(java.io.OutputStream output) throws java.io.IOException;
+    }
+
     public static void openBinaryDocument(FeatureHost host, String[] mimeTypes,
             BinaryDocumentConsumer documentConsumer) {
         submit(host, adapter -> adapter.openBinaryDocument(mimeTypes, documentConsumer));
@@ -250,6 +292,12 @@ public final class GboardPatchesSettingsContract {
     public static void openBinaryDocument(FeatureHost host, String[] mimeTypes, int maxBytes,
             BinaryDocumentConsumer documentConsumer) {
         submit(host, adapter -> adapter.openBinaryDocument(mimeTypes, maxBytes, documentConsumer));
+    }
+
+    public static void openBinaryDocuments(FeatureHost host, String[] mimeTypes, int maxBytes,
+            BinaryDocumentConsumer documentConsumer, Runnable completion) {
+        submit(host, adapter ->
+                adapter.openBinaryDocuments(mimeTypes, maxBytes, documentConsumer, completion));
     }
 
     public static void requestTargetRestart(FeatureHost host) {
