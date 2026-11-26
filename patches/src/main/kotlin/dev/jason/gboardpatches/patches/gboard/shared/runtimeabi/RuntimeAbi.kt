@@ -22,7 +22,6 @@ internal enum class RuntimeCallId(internal val encodedAbi: String) {
     CURSOR_TRACKPAD_RUNTIME_APPLY_BOOLEAN_PREFERENCE("Ldev/jason/gboardpatches/extension/cursortrackpad/GboardCursorTrackpadRuntime;->applyBooleanPreference(Ljava/lang/String;Z)Z"),
     CURSOR_TRACKPAD_RUNTIME_APPLY_RESOURCE_BOOLEAN_PREFERENCE("Ldev/jason/gboardpatches/extension/cursortrackpad/GboardCursorTrackpadRuntime;->applyResourceBooleanPreference(IZ)Z"),
     CUSTOM_STICKERS_RUNTIME_APPEND_CUSTOM_PACKS("Ldev/jason/gboardpatches/extension/customstickers/GboardCustomStickersRuntime;->appendCustomPacks(Ljava/lang/Object;)Ljava/lang/Object;"),
-    CUSTOM_STICKERS_RUNTIME_RESOLVE_OPENING_KEYBOARD("Ldev/jason/gboardpatches/extension/customstickers/GboardCustomStickersOpeningTab;->resolveOpeningKeyboard(Ljava/lang/Object;Landroid/view/inputmethod/EditorInfo;ZZ)Ljava/lang/Object;"),
     ACCESS_POINTS_MENU_RUNTIME_SELECT_BODY("Ldev/jason/gboardpatches/extension/accesspointsmenu/GboardAccessPointsMenuRuntime;->selectBody(I)I"),
     ACCESS_POINTS_MENU_RUNTIME_SELECT_KEYBOARD_LAYOUT("Ldev/jason/gboardpatches/extension/accesspointsmenu/GboardAccessPointsMenuRuntime;->selectKeyboardLayout(I)I"),
     ACCESS_POINTS_MENU_RUNTIME_WANTS_LEGACY("Ldev/jason/gboardpatches/extension/accesspointsmenu/GboardAccessPointsMenuRuntime;->wantsLegacy()Z"),

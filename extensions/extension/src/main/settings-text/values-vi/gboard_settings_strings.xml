@@ -988,13 +988,6 @@
     <string name="gboard_patches_custom_stickers_section_pack">Gói</string>
     <string name="gboard_patches_custom_stickers_show_in_keyboard">Hiện trên bàn phím</string>
     <string name="gboard_patches_custom_stickers_show_in_keyboard_summary">Hiện gói này trên thanh gói của thẻ Sticker trong Gboard.</string>
-    <string name="gboard_patches_custom_stickers_section_keyboard">Bàn phím</string>
-    <string name="gboard_patches_custom_stickers_opening_tab">Thẻ mở khi bấm phím emoji</string>
-    <string name="gboard_patches_custom_stickers_opening_tab_summary">Nếu app không hỗ trợ thẻ đã chọn, Gboard sẽ mở Emoji.</string>
-    <string name="gboard_patches_custom_stickers_opening_tab_stock">Emoji (mặc định)</string>
-    <string name="gboard_patches_custom_stickers_opening_tab_sticker">Sticker</string>
-    <string name="gboard_patches_custom_stickers_opening_tab_gif">GIF</string>
-    <string name="gboard_patches_custom_stickers_opening_tab_emoticon">Biểu tượng cảm xúc chữ</string>
     <string name="gboard_patches_custom_stickers_add">Thêm sticker</string>
     <string name="gboard_patches_custom_stickers_add_summary">Chọn một hoặc nhiều ảnh PNG, WebP, JPEG hoặc GIF, mỗi ảnh tối đa 8 MB. GIF được lưu thành ảnh tĩnh.</string>
     <string name="gboard_patches_custom_stickers_rename">Đổi tên gói</string>

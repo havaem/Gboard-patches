@@ -991,13 +991,6 @@
     <string name="gboard_patches_custom_stickers_section_pack">貼圖包</string>
     <string name="gboard_patches_custom_stickers_show_in_keyboard">在鍵盤中顯示</string>
     <string name="gboard_patches_custom_stickers_show_in_keyboard_summary">在 Gboard 貼圖分頁的標頭顯示這個貼圖包。</string>
-    <string name="gboard_patches_custom_stickers_section_keyboard">鍵盤</string>
-    <string name="gboard_patches_custom_stickers_opening_tab">表情符號鍵開啟的分頁</string>
-    <string name="gboard_patches_custom_stickers_opening_tab_summary">如果應用程式不支援所選分頁，Gboard 會改為開啟表情符號。</string>
-    <string name="gboard_patches_custom_stickers_opening_tab_stock">表情符號（預設）</string>
-    <string name="gboard_patches_custom_stickers_opening_tab_sticker">貼圖</string>
-    <string name="gboard_patches_custom_stickers_opening_tab_gif">GIF</string>
-    <string name="gboard_patches_custom_stickers_opening_tab_emoticon">顏文字</string>
     <string name="gboard_patches_custom_stickers_add">新增貼圖</string>
     <string name="gboard_patches_custom_stickers_add_summary">可一次選取多張 PNG、WebP、JPEG 或 GIF 圖片，每張最大 8 MB。GIF 會儲存為靜態圖片。</string>
     <string name="gboard_patches_custom_stickers_rename">重新命名貼圖包</string>

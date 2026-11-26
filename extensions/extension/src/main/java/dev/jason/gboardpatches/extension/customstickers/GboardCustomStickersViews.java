@@ -488,10 +488,15 @@ final class GboardCustomStickersViews {
         THUMBNAIL_LOADER.execute(() -> {
             for (int i : missing) {
                 File file = files.get(i);
-                Bitmap bitmap = decodeThumbnail(file);
-                if (bitmap == null) continue;
-                Thumbnail thumbnail = new Thumbnail(bitmap, hasTransparency(bitmap));
-                THUMBNAILS.put(thumbnailKey(file), thumbnail);
+                // An earlier queued job may have decoded it already.
+                Thumbnail cached = THUMBNAILS.get(thumbnailKey(file));
+                if (cached == null) {
+                    Bitmap bitmap = decodeThumbnail(file);
+                    if (bitmap == null) continue;
+                    cached = new Thumbnail(bitmap, hasTransparency(bitmap));
+                    THUMBNAILS.put(thumbnailKey(file), cached);
+                }
+                Thumbnail thumbnail = cached;
                 ImageView image = images.get(i);
                 View photo = photoBadges == null ? null : photoBadges.get(i);
                 image.post(() -> showThumbnail(image, photo, thumbnail));

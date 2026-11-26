@@ -709,7 +709,6 @@
       "migration_scope": "version-sensitive",
       "consumer_files": [
         "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/features/customstickers/GboardCustomStickersFeatureMarkerPatch.kt",
-        "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/features/customstickers/GboardCustomStickersOpeningTabPatch.kt",
         "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/features/customstickers/GboardCustomStickersPackListPatch.kt",
         "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/registry/GboardPatchRegistry.kt"
       ],
@@ -721,8 +720,7 @@
           "order": 1980,
           "required_bindings": [],
           "runtime_calls": [
-            "CUSTOM_STICKERS_RUNTIME_APPEND_CUSTOM_PACKS",
-            "CUSTOM_STICKERS_RUNTIME_RESOLVE_OPENING_KEYBOARD"
+            "CUSTOM_STICKERS_RUNTIME_APPEND_CUSTOM_PACKS"
           ]
         }
       ]
