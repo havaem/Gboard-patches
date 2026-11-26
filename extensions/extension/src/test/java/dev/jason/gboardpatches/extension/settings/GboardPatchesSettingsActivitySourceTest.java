@@ -185,7 +185,7 @@ public final class GboardPatchesSettingsActivitySourceTest {
                 "src/main/java/dev/jason/gboardpatches/extension/settings/"
                         + "GboardPatchesSettingsActivity.java");
         String openFeature = extractMethod(source, "public void openFeature(");
-        String navigateBack = extractMethod(source, "private boolean navigateBack(");
+        String navigateBack = extractMethod(source, "private boolean navigateBack(boolean ");
         String applyScreen = extractMethod(source, "private void applyScreen(");
         String finishScreenApply = extractMethod(source, "private void finishScreenApply(");
 
