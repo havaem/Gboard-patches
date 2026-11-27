@@ -80,8 +80,10 @@ public final class GboardTextExpanderRuntime {
         Object entries = events.entries.get(event);
         if (entries == null || Array.getLength(entries) != 1) return false;
         Object entry = Array.get(entries, 0);
-        return entry != null && events.code.getInt(entry) == SPACE
-                && events.payload.get(entry) == null
+        if (entry == null || events.code.getInt(entry) != SPACE) return false;
+        // Gboard's Space softkey carries data=" " as its payload.
+        Object payload = events.payload.get(entry);
+        return (payload == null || " ".equals(String.valueOf(payload)))
                 && events.action.get(event) instanceof Enum<?> action
                 && "PRESS".equals(action.name());
     }
