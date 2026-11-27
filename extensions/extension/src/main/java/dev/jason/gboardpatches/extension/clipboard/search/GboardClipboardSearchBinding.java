@@ -10,18 +10,18 @@ import java.lang.reflect.Proxy;
 import java.util.function.Consumer;
 
 /**
- * Reuses Gboard's "add clip" keyboard as the query field. Its save callback is wrapped while a
- * search is pending, so Done submits the query instead of saving a clip; with no search pending
- * the wrapper forwards to the native save unchanged.
+ * Reuses Gboard's "add clip" field (in-keyboard or popup) as the query field. Its save
+ * callback is wrapped while a search is pending, so Done submits the query instead of saving
+ * a clip; with no search pending the wrapper forwards to the native save unchanged.
  */
 public final class GboardClipboardSearchBinding {
     // ~2 s of frames: the add-entry switch can go through a background hop first.
     private static final int INSTALL_ATTEMPTS = 120;
 
-    private final Method openAddEntry, reload, inKeyboardEditing;
-    private final Field controller, keyboardHost, adapter, addEntry, addEntryType, saver,
-            queryField, titleField;
-    private final Class<?> saverType;
+    private final Method openAddEntry, reload;
+    private final Field controller, adapter, addEntry, addEntryType, saver, queryField, titleField,
+            popup, popupSaver, popupField;
+    private final Class<?> saverType, popupSaverType;
     private final Object addEntryKind;
 
     public GboardClipboardSearchBinding(ClassLoader loader) throws ReflectiveOperationException {
@@ -30,31 +30,33 @@ public final class GboardClipboardSearchBinding {
         Class<?> addEntryKeyboard = Class.forName(
                 "com.google.android.apps.inputmethod.libs.clipboard.ClipboardAddEntryKeyboard",
                 false, loader);
-        Class<?> abstractKeyboard = Class.forName(
-                "com.google.android.libraries.inputmethod.keyboard.impl.AbstractKeyboard",
-                false, loader);
         Class<?> clip = Class.forName("fpk", false, loader);
         Class<?> adapterClass = Class.forName("fqn", false, loader);
         Class<?> controllerClass = Class.forName("frc", false, loader);
-        Class<?> host = Class.forName("pkz", false, loader);
+        Class<?> popupClass = Class.forName("fpu", false, loader);
+        Class<?> editField = Class.forName(
+                "com.google.android.libraries.inputmethod.widgets.EditTextOnKeyboard", false, loader);
         Class<?> keyboardType = Class.forName("qch", false, loader);
         saverType = Class.forName("fqo", false, loader);
-        if (!saverType.isInterface() || !saverType.isAssignableFrom(controllerClass)) {
+        popupSaverType = Class.forName("fpt", false, loader);
+        if (!saverType.isInterface() || !saverType.isAssignableFrom(controllerClass)
+                || !popupSaverType.isInterface()
+                || !popupSaverType.isAssignableFrom(controllerClass)) {
             throw new NoSuchFieldException("Clipboard add-entry saver mismatch");
         }
         openAddEntry = method(keyboard, "N", void.class, clip);
         reload = method(adapterClass, "J", void.class);
-        inKeyboardEditing = method(host, "ax", boolean.class);
         controller = field(keyboard, "b", Class.forName("frh", false, loader));
-        keyboardHost = field(abstractKeyboard, "A", host);
         adapter = field(keyboard, "c", adapterClass);
         addEntry = field(controllerClass, "e", addEntryKeyboard);
         addEntryType = field(controllerClass, "c", keyboardType);
         saver = field(addEntryKeyboard, "b", saverType);
-        queryField = field(addEntryKeyboard, "a",
-                Class.forName("com.google.android.libraries.inputmethod.widgets.EditTextOnKeyboard",
-                        false, loader));
+        queryField = field(addEntryKeyboard, "a", editField);
         titleField = field(addEntryKeyboard, "e", TextView.class);
+        // Most layouts add clips in a popup over a text keyboard instead of the in-keyboard field.
+        popup = field(controllerClass, "b", popupClass);
+        popupSaver = field(popupClass, "b", popupSaverType);
+        popupField = field(popupClass, "d", editField);
         Field kind = Class.forName("fsd", false, loader).getDeclaredField("b");
         kind.setAccessible(true);
         addEntryKind = kind.get(null);
@@ -63,10 +65,8 @@ public final class GboardClipboardSearchBinding {
         }
     }
 
-    /** Search needs the in-keyboard add-entry field; the popup variant saves another way. */
     public boolean available(Object keyboard) throws ReflectiveOperationException {
-        Object value = keyboardHost.get(keyboard);
-        return value != null && (Boolean) inKeyboardEditing.invoke(value);
+        return controller.get(keyboard) != null;
     }
 
     /** Opens the add-entry keyboard as a query field; {@code view} schedules the hand-off. */
@@ -120,6 +120,25 @@ public final class GboardClipboardSearchBinding {
         }
 
         private boolean install() throws ReflectiveOperationException {
+            return installPopup() || installKeyboard();
+        }
+
+        private boolean installPopup() throws ReflectiveOperationException {
+            Object window = popup.get(owner);
+            if (window == null) return false;
+            Object field = popupField.get(window);
+            Object stock = popupSaver.get(window);
+            if (!(field instanceof EditText text) || !text.isAttachedToWindow() || stock == null) {
+                return false;
+            }
+            if (!Proxy.isProxyClass(stock.getClass())) {
+                popupSaver.set(window, wrap(popupSaverType, stock));
+            }
+            text.setHint(title);
+            return true;
+        }
+
+        private boolean installKeyboard() throws ReflectiveOperationException {
             Object entry = addEntry.get(owner);
             if (entry == null || addEntryType.get(owner) != addEntryKind) return false;
             Object field = queryField.get(entry);
@@ -127,14 +146,16 @@ public final class GboardClipboardSearchBinding {
             if (!(field instanceof EditText text) || !text.isAttachedToWindow() || stock == null) {
                 return false;
             }
-            if (!Proxy.isProxyClass(stock.getClass())) saver.set(entry, wrap(stock));
+            if (!Proxy.isProxyClass(stock.getClass())) saver.set(entry, wrap(saverType, stock));
             if (titleField.get(entry) instanceof TextView label) label.setText(title);
+            text.setHint(title);
             return true;
         }
     }
 
-    private Object wrap(Object target) {
-        return Proxy.newProxyInstance(saverType.getClassLoader(), new Class<?>[] {saverType},
+    /** Wraps a save callback; only its 3-argument save is intercepted while a search is pending. */
+    private static Object wrap(Class<?> type, Object target) {
+        return Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[] {type},
                 (proxy, method, args) -> {
                     switch (method.getName()) {
                         case "equals": return proxy == args[0];
@@ -142,8 +163,9 @@ public final class GboardClipboardSearchBinding {
                         case "toString": return "ClipboardSearchSaver";
                         default: break;
                     }
-                    if (method.getDeclaringClass() == saverType && args != null && args.length == 3
-                            && GboardClipboardSearch.submit((CharSequence) args[2])) {
+                    if (method.getDeclaringClass() == type && args != null && args.length == 3
+                            && args[2] instanceof CharSequence query
+                            && GboardClipboardSearch.submit(query)) {
                         return null;
                     }
                     try {

@@ -113,7 +113,12 @@ public final class GboardClipboardSelectAllRuntime {
 
         @Override public GboardClipboardExtraActions.Settings settings(Context context) {
             Snapshot current = snapshot;
-            if (current == null || !(current.search || current.stickers)) return null;
+            if (current == null) {
+                // Select All only loads settings in edit mode; Search shows outside it.
+                if (preferences == null) loadSettings(context);
+                return null;
+            }
+            if (!(current.search || current.stickers)) return null;
             String language = language(context, current);
             return new GboardClipboardExtraActions.Settings(current.search, current.stickers,
                     GboardSettingsText.getInLanguage(R.string.gboard_clipboard_search_label, language),
