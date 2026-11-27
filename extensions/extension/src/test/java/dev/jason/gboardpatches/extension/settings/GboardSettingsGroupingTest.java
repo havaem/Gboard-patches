@@ -112,7 +112,8 @@ public final class GboardSettingsGroupingTest {
                 "new GboardQuickInsertSettingsFeature(context)",
                 "new GboardFloatingWebSearchSettingsFeature(context)",
                 "new GboardCalculatorSettingsFeature(context)",
-                "new GboardSwipeDismissSettingsFeature(context)");
+                "new GboardSwipeDismissSettingsFeature(context)",
+                "new GboardTextExpanderSettingsFeature(context)");
         assertInOrder(layoutGroupSource.substring(layoutGroupSource.indexOf("Arrays.asList(")),
                 "new GboardSpacebarLogoSettingsFeature(context)",
                 "new GboardCloseProactiveSuggestionsSettingsFeature(context)",

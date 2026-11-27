@@ -1,3 +1,17 @@
+## Unreleased
+
+### ✨ New Features
+
+* **Gboard / Text Expander:** new patch. Type a shortcut such as `;addr` and press Space to replace it with longer text. Expansions can use `{date}`, `{time}`, `{clipboard}` and `{cursor}`. Password fields are skipped. Manage shortcuts under **Patches → Keyboard tools → Text Expander**.
+* **Gboard / Clipboard Enhancements:** a **Search** button in the clipboard header. Type a word and tap Done to show only matching clips; letter case and accents are ignored. Tap the button again, or close the clipboard, to clear the search.
+* **Gboard / Clipboard Enhancements:** in edit mode, select image clips and tap the image button to save them to a **Custom Stickers** pack or a new pack. Requires the Custom Stickers patch.
+
+### ✨ Tính năng mới
+
+* **Gboard / Text Expander:** patch mới. Gõ từ tắt như `;dc` rồi nhấn Cách để thay bằng đoạn văn dài. Nội dung có thể dùng `{date}`, `{time}`, `{clipboard}` và `{cursor}`. Bỏ qua ô mật khẩu. Quản lý từ tắt trong **Patches → Keyboard tools → Text Expander**.
+* **Gboard / Clipboard Enhancements:** nút **Tìm kiếm** trên đầu bảng nhớ tạm. Gõ từ khóa rồi nhấn Xong để chỉ hiện các đoạn khớp, không phân biệt hoa thường và dấu. Nhấn lại nút hoặc đóng bảng nhớ tạm để xóa tìm kiếm.
+* **Gboard / Clipboard Enhancements:** trong chế độ chỉnh sửa, chọn các đoạn là ảnh rồi nhấn nút ảnh để lưu vào một gói **Custom Stickers** hoặc gói mới. Cần patch Custom Stickers.
+
 ## [4.5.0](https://github.com/jasonwu1994/Gboard-patches/compare/v4.4.0...v4.5.0) (2026-11-27)
 
 ### ✨ New Features

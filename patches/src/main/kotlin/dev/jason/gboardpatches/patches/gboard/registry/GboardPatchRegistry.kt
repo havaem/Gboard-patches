@@ -90,6 +90,8 @@ import dev.jason.gboardpatches.patches.gboard.features.symbolfooter.gboardSymbol
 import dev.jason.gboardpatches.patches.gboard.features.symbolfooter.gboardSymbolFooterOrderFeatureMarkerPatch
 import dev.jason.gboardpatches.patches.gboard.features.shiftdelete.gboardShiftDeleteBytecodePatch
 import dev.jason.gboardpatches.patches.gboard.features.shiftdelete.gboardShiftDeleteFeatureMarkerPatch
+import dev.jason.gboardpatches.patches.gboard.features.textexpander.gboardTextExpanderBytecodePatch
+import dev.jason.gboardpatches.patches.gboard.features.textexpander.gboardTextExpanderFeatureMarkerPatch
 import dev.jason.gboardpatches.patches.gboard.features.swipedismiss.gboardSwipeDismissBytecodePatch
 import dev.jason.gboardpatches.patches.gboard.features.swipedismiss.gboardSwipeDismissFeatureMarkerPatch
 import dev.jason.gboardpatches.patches.gboard.features.toprowswipe.gboardTopRowSwipeFeatureMarkerPatch
@@ -317,6 +319,23 @@ val gboardShiftDeletePatch = gboardPublicResourcePatch(
         gboardPatchesSettingsPatch,
         gboardShiftDeleteFeatureMarkerPatch,
         gboardShiftDeleteBytecodePatch,
+    )
+}
+
+@Suppress("unused")
+val gboardTextExpanderPatch = gboardPublicResourcePatch(
+    featureId = "text_expander",
+    name = "Text Expander",
+    description = "輸入縮寫後按空白鍵，自動換成預先設定的長文字。\n" +
+        "Type a shortcut and press Space to replace it with longer text you set up.",
+    default = true,
+) {
+    compatibleWith(COMPATIBILITY_GBOARD)
+
+    dependsOn(
+        gboardPatchesSettingsPatch,
+        gboardTextExpanderFeatureMarkerPatch,
+        gboardTextExpanderBytecodePatch,
     )
 }
 
@@ -947,6 +966,7 @@ object GboardPublishedPatchCatalog {
         gboardSimpleCalculatorPatch,
         gboardSwipeDismissPatch,
         gboardShiftDeletePatch,
+        gboardTextExpanderPatch,
         gboardAdvancedVoiceTypingPatch,
         gboardBluetoothMicrophonePatch,
         gboardEmojiSizePatch,

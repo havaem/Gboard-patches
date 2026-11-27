@@ -510,6 +510,18 @@
       "options": []
     },
     {
+      "name": "Text Expander",
+      "description": "輸入縮寫後按空白鍵，自動換成預先設定的長文字。\nType a shortcut and press Space to replace it with longer text you set up.",
+      "use": true,
+      "dependencies": [],
+      "compatiblePackages": {
+        "com.google.android.inputmethod.latin": [
+          "18.5.4.993608717-release-arm64-v8a"
+        ]
+      },
+      "options": []
+    },
+    {
       "name": "Toolbar Editing Buttons",
       "description": "將全選、複製、剪下、貼上、向前刪除、行首／行尾、Tab 與方向鍵等按鈕加入選單。\nAdd editing and cursor buttons such as Select All, Copy, Cut, Paste, Forward Delete, Home/End, Tab, and arrows to the menu.",
       "use": true,

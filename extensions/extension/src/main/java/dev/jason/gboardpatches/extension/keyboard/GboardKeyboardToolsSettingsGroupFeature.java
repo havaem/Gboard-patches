@@ -20,6 +20,7 @@ import dev.jason.gboardpatches.extension.settings.GboardPatchesSettingsContract;
 import dev.jason.gboardpatches.extension.settings.GboardSettingsText;
 import dev.jason.gboardpatches.extension.shiftdelete.GboardShiftDeleteSettingsFeature;
 import dev.jason.gboardpatches.extension.swipedismiss.GboardSwipeDismissSettingsFeature;
+import dev.jason.gboardpatches.extension.textexpander.GboardTextExpanderSettingsFeature;
 import dev.jason.gboardpatches.extension.toprowswipe.GboardTopRowSwipeSettingsFeature;
 import dev.jason.gboardpatches.extension.websearch.GboardFloatingWebSearchSettingsFeature;
 
@@ -52,7 +53,8 @@ public final class GboardKeyboardToolsSettingsGroupFeature
                         new GboardCalculatorSettingsFeature(context),
                         new GboardSwipeDismissSettingsFeature(context),
                         new GboardKeypressHapticsSettingsFeature(context),
-                        new GboardShiftDeleteSettingsFeature(context)));
+                        new GboardShiftDeleteSettingsFeature(context),
+                        new GboardTextExpanderSettingsFeature(context)));
     }
 
     @Override

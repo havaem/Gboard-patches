@@ -259,6 +259,25 @@ public final class GboardClipboardSettingsFeature
                             .putBoolean(GboardClipboardSettings.PREF_KEY_EXCLUDE_PINNED, value)
                             .apply()));
         }
+        rows.add(new GboardPatchesSettingsContract.ToggleRow(
+                GboardSettingsText.get(context, R.string.gboard_clipboard_search_toggle),
+                GboardSettingsText.get(context, R.string.gboard_clipboard_search_summary),
+                clipboardEnabled,
+                GboardClipboardSettings.readSearch(preferences),
+                value -> preferences.edit()
+                        .putBoolean(GboardClipboardSettings.PREF_KEY_SEARCH, value)
+                        .apply()));
+        if (GboardPatchesFeatureAvailability.hasFeature(
+                context, GboardPatchesFeatureAvailability.FEATURE_CUSTOM_STICKERS)) {
+            rows.add(new GboardPatchesSettingsContract.ToggleRow(
+                    GboardSettingsText.get(context, R.string.gboard_clipboard_sticker_toggle),
+                    GboardSettingsText.get(context, R.string.gboard_clipboard_sticker_summary),
+                    clipboardEnabled,
+                    GboardClipboardSettings.readSaveStickers(preferences),
+                    value -> preferences.edit()
+                            .putBoolean(GboardClipboardSettings.PREF_KEY_SAVE_STICKERS, value)
+                            .apply()));
+        }
     }
 
     private GboardPatchesSettingsContract.Screen buildErrorScreen() {

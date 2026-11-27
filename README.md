@@ -25,6 +25,18 @@ Create your own sticker packs from PNG, WebP, JPEG, or GIF images and use them i
 - Each pack can apply default edits to newly added stickers.
 - Export and import a pack as a ZIP file.
 - Messenger shows only images with a transparent background as stickers, so use Remove background or Outline for photos.
+- Save image clips as stickers: in the clipboard's edit mode, select images and tap the image button to add them to a pack or a new one.
+
+### Text Expander
+
+Type a shortcut such as `;addr` and press Space to replace it with longer text. Set shortcuts under **Patches → Keyboard tools → Text Expander**.
+
+- Expansions can use `{date}`, `{time}`, `{clipboard}`, and `{cursor}` to place the cursor.
+- Password fields are skipped, and only the on-screen keyboard's Space triggers an expansion.
+
+### Clipboard search
+
+**Clipboard Enhancements** adds a Search button to the clipboard header. Tap it, type a word, and tap Done to show only matching clips. Letter case and accents are ignored, so `tieng viet` finds `Tiếng Việt`. Tap the button again to clear the search; closing the clipboard clears it too.
 
 ### Other differences
 

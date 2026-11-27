@@ -145,6 +145,7 @@ internal enum class RuntimeCallId(internal val encodedAbi: String) {
     SPACEBAR_LOGO_RUNTIME_BEFORE_SOFT_KEY_BOUND("Ldev/jason/gboardpatches/extension/spacebarlogo/GboardSpacebarLogoAdapter;->beforeSoftKeyBound(Ljava/lang/Object;Ljava/lang/Object;)V"),
     SHIFT_DELETE_RUNTIME_REMAP_INPUT("Ldev/jason/gboardpatches/extension/shiftdelete/GboardShiftDeleteRuntime;->remapInput(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;"),
     SHIFT_DELETE_RUNTIME_ON_TOUCH_EVENT("Ldev/jason/gboardpatches/extension/shiftdelete/GboardShiftDeleteRuntime;->onTouchEvent(Landroid/view/MotionEvent;)V"),
+    TEXT_EXPANDER_RUNTIME_ON_INPUT("Ldev/jason/gboardpatches/extension/textexpander/GboardTextExpanderRuntime;->onInput(Ljava/lang/Object;Ljava/lang/Object;)Z"),
     SWIPE_DISMISS_RUNTIME_ON_HEADER_TOUCH("Ldev/jason/gboardpatches/extension/swipedismiss/GboardSwipeDismissRuntime;->onHeaderTouch(Landroid/view/View;Landroid/view/MotionEvent;)Z"),
     SYMBOL_FOOTER_ORDER_RUNTIME_REORDER_EXPRESSION_CORPUS_LIST("Ldev/jason/gboardpatches/extension/symbolfooter/GboardSymbolFooterOrderRuntime;->reorderExpressionCorpusList(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;"),
     TOP_ROW_SWIPE_RUNTIME_AFTER_SOFT_KEY_BOUND("Ldev/jason/gboardpatches/extension/toprowswipe/GboardTopRowSwipeRuntime;->afterSoftKeyBound(Ljava/lang/Object;)V"),

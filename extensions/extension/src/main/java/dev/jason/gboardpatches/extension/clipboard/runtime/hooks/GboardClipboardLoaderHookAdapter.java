@@ -2,7 +2,10 @@ package dev.jason.gboardpatches.extension.clipboard;
 
 import android.content.Context;
 
+import dev.jason.gboardpatches.extension.clipboard.search.GboardClipboardSearch;
+
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -116,7 +119,24 @@ final class GboardClipboardLoaderHookAdapter {
                 + " stockRecentSample=" + describeClips(handles, stockSections.recent, 3)
                 + ", stockPinnedSample=" + describeClips(handles, stockSections.pinned, 3)
                 + ", overrideRecentSample=" + describeClips(handles, assembly.visibleRecent, 3));
-        return new ArrayList<Object>(assembly.result);
+        String query = GboardClipboardSearch.query();
+        if (query == null) {
+            return new ArrayList<Object>(assembly.result);
+        }
+        // Filter after assembly so retention bookkeeping above still sees the full list.
+        return new ArrayList<Object>(GboardClipboardSearch.filter(assembly.result, query,
+                Arrays.asList(handles.recentHeader, handles.pinnedHeader, handles.specialHeader),
+                clip -> clipText(handles, clip)));
+    }
+
+    private static String clipText(GboardClipboardRuntimeSupport.ReflectionHandles handles,
+            Object clip) {
+        try {
+            Object value = handles.clipModelTextField.get(handles.clipModelField.get(clip));
+            return value instanceof String text ? text : null;
+        } catch (IllegalAccessException unavailable) {
+            return null;
+        }
     }
 
     private GboardClipboardRuntimeSupport.LoaderAssembly assembleVisibleSections(

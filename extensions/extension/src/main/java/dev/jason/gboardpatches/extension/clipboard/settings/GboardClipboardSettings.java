@@ -25,6 +25,8 @@ public final class GboardClipboardSettings {
 
     static final String PREF_KEY_SELECT_ALL = "pref_clipboard_select_unpinned_enabled";
     static final String PREF_KEY_EXCLUDE_PINNED = "pref_clipboard_exclude_pinned";
+    static final String PREF_KEY_SEARCH = "pref_clipboard_search_enabled";
+    static final String PREF_KEY_SAVE_STICKERS = "pref_clipboard_save_stickers_enabled";
 
     public static final String PREF_KEY_CLIPBOARD_ENABLED = "pref_clipboard_enabled";
     public static final String PREF_KEY_CLIPBOARD_SHOW_COUNTDOWN =
@@ -147,6 +149,14 @@ public final class GboardClipboardSettings {
 
     static boolean readExcludePinned(SharedPreferences preferences) {
         return readBooleanPreference(preferences, PREF_KEY_EXCLUDE_PINNED, false);
+    }
+
+    static boolean readSearch(SharedPreferences preferences) {
+        return readBooleanPreference(preferences, PREF_KEY_SEARCH, true);
+    }
+
+    static boolean readSaveStickers(SharedPreferences preferences) {
+        return readBooleanPreference(preferences, PREF_KEY_SAVE_STICKERS, true);
     }
 
     public static boolean readClipboardEnabled(SharedPreferences preferences) {

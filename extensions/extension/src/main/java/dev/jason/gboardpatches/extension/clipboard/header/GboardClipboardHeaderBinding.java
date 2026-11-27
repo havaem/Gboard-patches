@@ -78,7 +78,8 @@ public final class GboardClipboardHeaderBinding implements GboardClipboardHeader
         }
     }
 
-    public void attach(Object keyboard) throws ReflectiveOperationException {
+    public void attach(Object keyboard, GboardClipboardExtraActions.Ops extra)
+            throws ReflectiveOperationException {
         Object header = actionRoot(keyboard);
         if (!(header instanceof View view) || !softKeyboard.isInstance(view)) return;
         int iconsId = GboardClipboardHeaderLayout.idByName(view, ICONS_NAME);
@@ -97,6 +98,7 @@ public final class GboardClipboardHeaderBinding implements GboardClipboardHeader
         if (!(list instanceof View body)) return;
         GboardClipboardHeaderActions.attach(keyboard, view, row, anchor, text, body,
                 this, selection);
+        GboardClipboardExtraActions.attach(keyboard, view, row, anchor, text, extra);
     }
 
     private Object actionRoot(Object keyboard) throws ReflectiveOperationException {
