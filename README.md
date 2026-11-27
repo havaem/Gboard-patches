@@ -36,7 +36,7 @@ Type a shortcut such as `;addr` and press Space to replace it with longer text. 
 
 ### Clipboard search
 
-**Clipboard Enhancements** adds a Search button to the clipboard header. Tap it, type a word, and tap Done to show only matching clips. Letter case and accents are ignored, so `tieng viet` finds `Tiếng Việt`. Tap the button again to clear the search; closing the clipboard clears it too.
+**Clipboard Enhancements** adds a Search button at the right of the clipboard header. Tap it, type a word in the search form, and tap Search to show only matching clips. Letter case and accents are ignored, so `tieng viet` finds `Tiếng Việt`. Tap the button again to clear the search; closing the clipboard clears it too.
 
 ### Other differences
 

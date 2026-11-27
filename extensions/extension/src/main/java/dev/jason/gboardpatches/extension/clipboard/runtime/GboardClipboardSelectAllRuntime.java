@@ -133,9 +133,12 @@ public final class GboardClipboardSelectAllRuntime {
 
         @Override public void openSearch(Object keyboard, View view)
                 throws ReflectiveOperationException {
-            String title = GboardSettingsText.getInLanguage(R.string.gboard_clipboard_search_label,
-                    language(view.getContext(), snapshot));
-            search(keyboard).open(keyboard, view, title, GboardClipboardSelectAllRuntime::report);
+            String language = language(view.getContext(), snapshot);
+            search(keyboard).open(keyboard, view, new GboardClipboardSearchBinding.Texts(
+                    GboardSettingsText.getInLanguage(R.string.gboard_clipboard_search_label, language),
+                    GboardSettingsText.getInLanguage(R.string.gboard_clipboard_search_action, language),
+                    GboardSettingsText.getInLanguage(R.string.gboard_clipboard_search_hint, language)),
+                    GboardClipboardSelectAllRuntime::report);
         }
 
         @Override public void clearSearch(Object keyboard) throws ReflectiveOperationException {

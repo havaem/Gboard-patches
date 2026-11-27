@@ -1,12 +1,16 @@
 package dev.jason.gboardpatches.extension.clipboard.search;
 
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 
 /**
@@ -19,9 +23,23 @@ public final class GboardClipboardSearchBinding {
     private static final int INSTALL_ATTEMPTS = 120;
 
     private final Method openAddEntry, reload;
+    /** Texts that turn the add-clip form into a search form. */
+    public static final class Texts {
+        final String title;
+        final String action;
+        final String hint;
+
+        public Texts(String title, String action, String hint) {
+            this.title = title;
+            this.action = action;
+            this.hint = hint;
+        }
+    }
+
+    private final Method closePopup;
     private final Field controller, adapter, addEntry, addEntryType, saver, queryField, titleField,
-            popup, popupSaver, popupField;
-    private final Class<?> saverType, popupSaverType;
+            doneField, popup, popupField;
+    private final Class<?> saverType;
     private final Object addEntryKind;
 
     public GboardClipboardSearchBinding(ClassLoader loader) throws ReflectiveOperationException {
@@ -38,10 +56,7 @@ public final class GboardClipboardSearchBinding {
                 "com.google.android.libraries.inputmethod.widgets.EditTextOnKeyboard", false, loader);
         Class<?> keyboardType = Class.forName("qch", false, loader);
         saverType = Class.forName("fqo", false, loader);
-        popupSaverType = Class.forName("fpt", false, loader);
-        if (!saverType.isInterface() || !saverType.isAssignableFrom(controllerClass)
-                || !popupSaverType.isInterface()
-                || !popupSaverType.isAssignableFrom(controllerClass)) {
+        if (!saverType.isInterface() || !saverType.isAssignableFrom(controllerClass)) {
             throw new NoSuchFieldException("Clipboard add-entry saver mismatch");
         }
         openAddEntry = method(keyboard, "N", void.class, clip);
@@ -53,10 +68,12 @@ public final class GboardClipboardSearchBinding {
         saver = field(addEntryKeyboard, "b", saverType);
         queryField = field(addEntryKeyboard, "a", editField);
         titleField = field(addEntryKeyboard, "e", TextView.class);
+        doneField = field(addEntryKeyboard, "d", View.class);
         // Most layouts add clips in a popup over a text keyboard instead of the in-keyboard field.
         popup = field(controllerClass, "b", popupClass);
-        popupSaver = field(popupClass, "b", popupSaverType);
         popupField = field(popupClass, "d", editField);
+        // Closes the popup and switches back to the clipboard, as Cancel does.
+        closePopup = method(popupClass, "d", void.class);
         Field kind = Class.forName("fsd", false, loader).getDeclaredField("b");
         kind.setAccessible(true);
         addEntryKind = kind.get(null);
@@ -70,7 +87,7 @@ public final class GboardClipboardSearchBinding {
     }
 
     /** Opens the add-entry keyboard as a query field; {@code view} schedules the hand-off. */
-    public void open(Object keyboard, View view, String title, Consumer<Throwable> report)
+    public void open(Object keyboard, View view, Texts texts, Consumer<Throwable> report)
             throws ReflectiveOperationException {
         Object owner = controller.get(keyboard);
         if (owner == null) return;
@@ -81,7 +98,7 @@ public final class GboardClipboardSearchBinding {
             GboardClipboardSearch.clear();
             throw failure;
         }
-        view.post(new Installer(owner, view, title, report));
+        view.post(new Installer(owner, view, texts, report));
     }
 
     /** Clears the filter and reloads the visible list. */
@@ -95,14 +112,14 @@ public final class GboardClipboardSearchBinding {
     private final class Installer implements Runnable {
         final Object owner;
         final View view;
-        final String title;
+        final Texts texts;
         final Consumer<Throwable> report;
         int attempts;
 
-        Installer(Object owner, View view, String title, Consumer<Throwable> report) {
+        Installer(Object owner, View view, Texts texts, Consumer<Throwable> report) {
             this.owner = owner;
             this.view = view;
-            this.title = title;
+            this.texts = texts;
             this.report = report;
         }
 
@@ -127,15 +144,39 @@ public final class GboardClipboardSearchBinding {
             Object window = popup.get(owner);
             if (window == null) return false;
             Object field = popupField.get(window);
-            Object stock = popupSaver.get(window);
-            if (!(field instanceof EditText text) || !text.isAttachedToWindow() || stock == null) {
-                return false;
-            }
-            if (!Proxy.isProxyClass(stock.getClass())) {
-                popupSaver.set(window, wrap(popupSaverType, stock));
-            }
-            text.setHint(title);
+            if (!(field instanceof EditText text) || !text.isAttachedToWindow()) return false;
+            // Layout order: title, field, Cancel, Save. Resource ids are obfuscated, so walk it.
+            List<Button> buttons = new ArrayList<>();
+            TextView label = collect(text.getRootView(), text, buttons, null);
+            if (buttons.isEmpty()) return false;
+            Button search = buttons.get(buttons.size() - 1);
+            search.setText(texts.action);
+            // The popup is rebuilt for every open, so this listener never outlives the search.
+            search.setOnClickListener(clicked -> {
+                try {
+                    if (GboardClipboardSearch.submit(text.getText())) closePopup.invoke(window);
+                } catch (Throwable failure) {
+                    GboardClipboardSearch.clear();
+                    report.accept(failure);
+                }
+            });
+            if (label != null) label.setText(texts.title);
+            text.setHint(texts.hint);
             return true;
+        }
+
+        /** Collects buttons in layout order and returns the first plain TextView (the title). */
+        private TextView collect(View view, View field, List<Button> buttons, TextView title) {
+            if (view instanceof Button button) {
+                buttons.add(button);
+            } else if (view != field && view instanceof TextView text && !(view instanceof EditText)) {
+                if (title == null) title = text;
+            } else if (view instanceof ViewGroup group) {
+                for (int i = 0; i < group.getChildCount(); i++) {
+                    title = collect(group.getChildAt(i), field, buttons, title);
+                }
+            }
+            return title;
         }
 
         private boolean installKeyboard() throws ReflectiveOperationException {
@@ -147,8 +188,9 @@ public final class GboardClipboardSearchBinding {
                 return false;
             }
             if (!Proxy.isProxyClass(stock.getClass())) saver.set(entry, wrap(saverType, stock));
-            if (titleField.get(entry) instanceof TextView label) label.setText(title);
-            text.setHint(title);
+            if (titleField.get(entry) instanceof TextView label) label.setText(texts.title);
+            if (doneField.get(entry) instanceof TextView done) done.setText(texts.action);
+            text.setHint(texts.hint);
             return true;
         }
     }

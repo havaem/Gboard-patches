@@ -1014,9 +1014,11 @@
     <string name="gboard_clipboard_select_all_summary">Select multiple clipboard items, then tap Delete to remove them together.</string>
     <string name="gboard_clipboard_exclude_pinned">Exclude pinned clips</string>
     <string name="gboard_clipboard_search_toggle">Add a Search button</string>
-    <string name="gboard_clipboard_search_summary">Tap Search, type a word, then tap Done to show only matching clips. Letter case and accents are ignored. Closing the clipboard clears the search.</string>
+    <string name="gboard_clipboard_search_summary">Tap Search, type a word, then tap Search again to show only matching clips. Letter case and accents are ignored. Closing the clipboard clears the search.</string>
     <string name="gboard_clipboard_search_label">Search clipboard</string>
     <string name="gboard_clipboard_search_clear">Clear search</string>
+    <string name="gboard_clipboard_search_action">Search</string>
+    <string name="gboard_clipboard_search_hint">Type a word to find</string>
     <string name="gboard_clipboard_sticker_toggle">Save images to a sticker pack</string>
     <string name="gboard_clipboard_sticker_summary">In edit mode, select image clips and tap the image button to add them to a Custom Stickers pack.</string>
     <string name="gboard_clipboard_sticker_label">Add to sticker pack</string>

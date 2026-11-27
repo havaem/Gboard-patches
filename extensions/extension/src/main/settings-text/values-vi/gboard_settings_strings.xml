@@ -1011,9 +1011,11 @@
     <string name="gboard_clipboard_select_all_summary">Chọn nhiều đoạn trong bảng nhớ tạm rồi nhấn Xóa để xóa tất cả cùng lúc.</string>
     <string name="gboard_clipboard_exclude_pinned">Loại trừ các đoạn đã ghim</string>
     <string name="gboard_clipboard_search_toggle">Thêm nút Tìm kiếm</string>
-    <string name="gboard_clipboard_search_summary">Nhấn Tìm kiếm, gõ từ khóa rồi nhấn Xong để chỉ hiện các đoạn khớp. Không phân biệt hoa thường và dấu. Đóng bảng nhớ tạm sẽ xóa từ khóa.</string>
+    <string name="gboard_clipboard_search_summary">Nhấn nút tìm kiếm, gõ từ khóa rồi nhấn Tìm để chỉ hiện các đoạn khớp. Không phân biệt hoa thường và dấu. Đóng bảng nhớ tạm sẽ xóa từ khóa.</string>
     <string name="gboard_clipboard_search_label">Tìm trong bảng nhớ tạm</string>
     <string name="gboard_clipboard_search_clear">Xóa tìm kiếm</string>
+    <string name="gboard_clipboard_search_action">Tìm</string>
+    <string name="gboard_clipboard_search_hint">Nhập từ khóa cần tìm</string>
     <string name="gboard_clipboard_sticker_toggle">Lưu ảnh vào gói nhãn dán</string>
     <string name="gboard_clipboard_sticker_summary">Trong chế độ chỉnh sửa, chọn các đoạn là ảnh rồi nhấn nút ảnh để thêm vào một gói Nhãn dán tùy chỉnh.</string>
     <string name="gboard_clipboard_sticker_label">Thêm vào gói nhãn dán</string>

@@ -144,8 +144,9 @@ public final class GboardClipboardExtraActions {
                 boolean showSearch = current && !editing && settings.search
                         && (query != null || ops.searchAvailable(owner));
                 boolean showStickers = current && editing && settings.stickers;
-                if (showSearch && search == null) search = createButton();
-                if (showStickers && stickers == null) stickers = createButton();
+                // Search sits at the far right; edit-mode actions stay with Select All on the left.
+                if (showSearch && search == null) search = createButton(icons.getChildCount());
+                if (showStickers && stickers == null) stickers = createButton(0);
                 if (search != null) {
                     configure(search, showSearch, query == null
                             ? GboardPatchesIcons.SEARCH : GboardPatchesIcons.CLOSE,
@@ -191,7 +192,7 @@ public final class GboardClipboardExtraActions {
             return title != null ? title.getTextColors() : ColorStateList.valueOf(Color.GRAY);
         }
 
-        private ImageButton createButton() {
+        private ImageButton createButton(int index) {
             Context context = header.getContext();
             float density = context.getResources().getDisplayMetrics().density;
             int size = Math.round(48 * density);
@@ -208,7 +209,7 @@ public final class GboardClipboardExtraActions {
             button.setBackground(new InsetDrawable(surface, (size - face) / 2));
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(size, size);
             params.gravity = Gravity.CENTER_VERTICAL;
-            icons.addView(button, 0, params);
+            icons.addView(button, index, params);
             return button;
         }
 

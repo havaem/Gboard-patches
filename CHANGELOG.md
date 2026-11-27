@@ -1,3 +1,13 @@
+## [4.6.0-dev.3](https://github.com/havaem/Gboard-patches/compare/v4.6.0-dev.2...v4.6.0-dev.3) (2026-11-27)
+
+### 💄 Improvements
+
+* **Gboard / Clipboard Enhancements:** the **Search** button now sits at the far right of the clipboard header. It opens a real search form, titled **Search clipboard**, with a hint and a **Search** button instead of Gboard's **Add item** form and **Save** button. Searching can no longer save the query as a new clip.
+
+### 💄 Cải tiến
+
+* **Gboard / Clipboard Enhancements:** nút **Tìm kiếm** giờ nằm sát bên phải đầu bảng nhớ tạm, mở form tìm kiếm riêng có tiêu đề **Tìm trong bảng nhớ tạm**, gợi ý nhập và nút **Tìm** thay cho form **Thêm mục** và nút **Lưu** của Gboard. Tìm kiếm không còn có thể lưu từ khóa thành clip mới.
+
 ## [4.6.0-dev.2](https://github.com/havaem/Gboard-patches/compare/v4.6.0-dev.1...v4.6.0-dev.2) (2026-11-27)
 
 ### 🐛 Bug Fixes
