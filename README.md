@@ -1,23 +1,37 @@
 <h1 align="center">Gboard Patches</h1>
 
 <p align="center">
-  Morphe patches for Gboard with a mix of global improvements and Taiwan-focused enhancements.
+  Morphe patches for Gboard, based on <a href="https://github.com/jasonwu1994/Gboard-patches">jasonwu1994/Gboard-patches</a> with extra features.
 </p>
 
 <p align="center">
-  <a href="https://github.com/jasonwu1994/Gboard-patches/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/jasonwu1994/Gboard-patches?display_name=tag&label=Release&style=for-the-badge"></a>
-  <a href="https://github.com/jasonwu1994/Gboard-patches"><img alt="Total downloads" src="https://img.shields.io/github/downloads/jasonwu1994/Gboard-patches/total?label=Downloads&style=for-the-badge"></a>
-  <a href="https://morphe.software/add-source?github=jasonwu1994/Gboard-patches"><img alt="Add to Morphe" src="https://img.shields.io/badge/Morphe-Add%20Source-00A8FF?style=for-the-badge"></a>
-  <a href="https://github.com/jasonwu1994/Gboard-patches"><img alt="GitHub stars" src="https://img.shields.io/github/stars/jasonwu1994/Gboard-patches?style=social"></a>
-</p>
-
-<p align="center">
-  <a href="https://ko-fi.com/jasonwu1994"><img height="40" alt="Buy me a coffee on Ko-fi" src="https://storage.ko-fi.com/cdn/kofi5.png?v=3"></a>
+  <a href="https://github.com/havaem/Gboard-patches/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/havaem/Gboard-patches?display_name=tag&label=Release&style=for-the-badge"></a>
+  <a href="https://github.com/havaem/Gboard-patches"><img alt="Total downloads" src="https://img.shields.io/github/downloads/havaem/Gboard-patches/total?label=Downloads&style=for-the-badge"></a>
+  <a href="https://morphe.software/add-source?github=havaem/Gboard-patches"><img alt="Add to Morphe" src="https://img.shields.io/badge/Morphe-Add%20Source-00A8FF?style=for-the-badge"></a>
 </p>
 
 ## Overview
 
-Gboard Patches is a public Morphe source for a curated set of Gboard enhancements, including both global usability improvements and Taiwan-focused features for local input habits and day-to-day use.
+This repository is a Morphe source for Gboard. It includes every patch of the original project and keeps following it, then adds the features listed below. The original patches are listed in the collapsed section below.
+
+## What this version adds
+
+### Custom Stickers
+
+Create your own sticker packs from PNG, WebP, JPEG, or GIF images and use them in Gboard's Stickers tab alongside the official packs.
+
+- Pack cover, sticker preview grid, multi-select import (including from other apps such as Google Photos), drag-and-drop reordering, and a Show in keyboard switch per pack.
+- Sticker editor with plain-background removal, round corners, and an outline with adjustable width and color. Edits are non-destructive, so a sticker can always be re-edited from its original, and several stickers can be edited at once.
+- Each pack can apply default edits to newly added stickers.
+- Export and import a pack as a ZIP file.
+- Messenger shows only images with a transparent background as stickers, so use Remove background or Outline for photos.
+
+### Other differences
+
+- The default app name is **GboardHavaem**.
+
+<details>
+<summary><b>Patches from the original project</b></summary>
 
 ## Included Patches
 
@@ -105,6 +119,12 @@ Import custom ZIP themes and beautiful themes from the official Rboard repositor
   <summary><code>Custom Symbols</code></summary>
 
   Adds a dedicated symbols tab and a quick access entry from the comma long-press popup.
+</details>
+
+<details>
+  <summary><code>Custom Stickers</code></summary>
+
+  Create your own sticker packs from PNG, WebP, JPEG, or GIF images and use them in Gboard's Stickers tab alongside the official packs.
 </details>
 
 <details>
@@ -318,12 +338,14 @@ Features tailored to Traditional Chinese and Zhuyin input workflows.
   Adjusts the seven bottom-row slot sizes on the Zhuyin keyboard, including <code>?123</code>, <code>，</code>, the globe key, space, <code>ㄦ</code>, backspace, and the IME action key.
 </details>
 
+</details>
+
 ## Install
 
 Add this repository as a Morphe source:
 
-- [Open in Morphe](https://morphe.software/add-source?github=jasonwu1994/Gboard-patches)
-- Or manually add `https://github.com/jasonwu1994/Gboard-patches`
+- [Open in Morphe](https://morphe.software/add-source?github=havaem/Gboard-patches)
+- Or manually add `https://github.com/havaem/Gboard-patches`
 
 ## Build
 
@@ -349,6 +371,10 @@ Generated outputs:
 - `patches/build/libs/*.mpp`
 - `patches-list.json`
 - `patches-bundle.json`
+
+## Credits
+
+Based on [jasonwu1994/Gboard-patches](https://github.com/jasonwu1994/Gboard-patches). Third-party notices are in [NOTICE](NOTICE).
 
 ## License
 

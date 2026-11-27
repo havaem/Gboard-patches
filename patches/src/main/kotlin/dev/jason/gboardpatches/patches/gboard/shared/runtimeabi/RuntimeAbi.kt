@@ -22,6 +22,7 @@ internal enum class RuntimeCallId(internal val encodedAbi: String) {
     ADVANCED_VOICE_RUNTIME_FORMATTER_GATE("Ldev/jason/gboardpatches/extension/advancedvoice/GboardAdvancedVoiceRuntime;->formatterGate(Ljava/util/Locale;ZZ)Z"),
     CURSOR_TRACKPAD_RUNTIME_APPLY_BOOLEAN_PREFERENCE("Ldev/jason/gboardpatches/extension/cursortrackpad/GboardCursorTrackpadRuntime;->applyBooleanPreference(Ljava/lang/String;Z)Z"),
     CURSOR_TRACKPAD_RUNTIME_APPLY_RESOURCE_BOOLEAN_PREFERENCE("Ldev/jason/gboardpatches/extension/cursortrackpad/GboardCursorTrackpadRuntime;->applyResourceBooleanPreference(IZ)Z"),
+    CUSTOM_STICKERS_RUNTIME_APPEND_CUSTOM_PACKS("Ldev/jason/gboardpatches/extension/customstickers/GboardCustomStickersRuntime;->appendCustomPacks(Ljava/lang/Object;)Ljava/lang/Object;"),
     ACCESS_POINTS_MENU_RUNTIME_SELECT_BODY("Ldev/jason/gboardpatches/extension/accesspointsmenu/GboardAccessPointsMenuRuntime;->selectBody(I)I"),
     ACCESS_POINTS_MENU_RUNTIME_SELECT_KEYBOARD_LAYOUT("Ldev/jason/gboardpatches/extension/accesspointsmenu/GboardAccessPointsMenuRuntime;->selectKeyboardLayout(I)I"),
     ACCESS_POINTS_MENU_RUNTIME_WANTS_LEGACY("Ldev/jason/gboardpatches/extension/accesspointsmenu/GboardAccessPointsMenuRuntime;->wantsLegacy()Z"),

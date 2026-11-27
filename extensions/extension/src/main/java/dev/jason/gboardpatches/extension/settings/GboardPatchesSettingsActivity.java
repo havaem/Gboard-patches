@@ -131,6 +131,8 @@ public final class GboardPatchesSettingsActivity extends Activity
     private static final int REQUEST_RUNTIME_PERMISSION = 0x4747;
     private static final int REQUEST_CREATE_BINARY_DOCUMENT = 0x4748;
     private static final int REQUEST_OPEN_BINARY_DOCUMENT = 0x4749;
+    private static final int REQUEST_OPEN_BINARY_DOCUMENTS = 0x474A;
+    private static final int REQUEST_CREATE_STREAM_DOCUMENT = 0x474B;
     private static final int TOOLBAR_HEIGHT_DP = 56;
     private static final int TOOLBAR_SCROLLED_THRESHOLD_DP = 24;
     private static final long TOOLBAR_SCROLL_TRANSITION_MS = 200L;
@@ -239,6 +241,11 @@ public final class GboardPatchesSettingsActivity extends Activity
     private PendingBinaryDocumentWrite pendingBinaryDocumentWrite;
     private GboardPatchesSettingsContract.BinaryDocumentConsumer pendingBinaryDocumentReader;
     private int pendingBinaryDocumentLimit = Integer.MAX_VALUE;
+    private GboardPatchesSettingsContract.BinaryDocumentConsumer pendingBinaryDocumentsReader;
+    private Runnable pendingBinaryDocumentsCompletion;
+    private int pendingBinaryDocumentsLimit;
+    private GboardPatchesSettingsContract.StreamWriter pendingStreamWriter;
+    private Runnable pendingStreamCompletion;
     private GboardPatchesSettingsContract.StringValueConsumer pendingDocumentTreeConsumer;
     private GboardPatchesSettingsContract.Feature lifecycleVisibleFeature;
     private boolean featureLifecycleEnabled;
@@ -332,6 +339,15 @@ public final class GboardPatchesSettingsActivity extends Activity
     @Override
     public Context getContext() {
         return this;
+    }
+
+    @Override
+    public void closeFeature() {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            runOnUiThread(this::closeFeature);
+            return;
+        }
+        if (settingsOrchestrator.snapshot().getCurrent() != null) navigateBack(false);
     }
 
     @Override
@@ -1347,6 +1363,58 @@ public final class GboardPatchesSettingsActivity extends Activity
 
     @Override
     @SuppressWarnings("deprecation")
+    public void createStreamDocument(String fileName, String mimeType,
+            GboardPatchesSettingsContract.StreamWriter writer, Runnable completionAction) {
+        if (writer == null) return;
+        pendingStreamWriter = writer;
+        pendingStreamCompletion = completionAction;
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT)
+                .addCategory(Intent.CATEGORY_OPENABLE)
+                .addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                .setType(normalizeMimeType(mimeType));
+        if (fileName != null && !fileName.isBlank()) {
+            intent.putExtra(Intent.EXTRA_TITLE, GboardExportFileNames.timestamped(fileName.trim()));
+        }
+        try {
+            startActivityForResult(intent, REQUEST_CREATE_STREAM_DOCUMENT);
+        } catch (Throwable throwable) {
+            pendingStreamWriter = null;
+            pendingStreamCompletion = null;
+            Log.w(TAG, "Failed to launch stream document create picker", throwable);
+            Toast.makeText(this, DOCUMENT_PICKER_FAILED, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void handleCreateStreamDocumentResult(int resultCode, Intent data) {
+        GboardPatchesSettingsContract.StreamWriter writer = pendingStreamWriter;
+        Runnable completion = pendingStreamCompletion;
+        pendingStreamWriter = null;
+        pendingStreamCompletion = null;
+        if (resultCode != RESULT_OK || data == null || data.getData() == null || writer == null) {
+            return;
+        }
+        Uri uri = data.getData();
+        Runnable write = () -> {
+            try (OutputStream output = getContentResolver().openOutputStream(uri, "wt")) {
+                if (output == null) throw new java.io.IOException("No output stream");
+                writer.write(output);
+                output.flush();
+                if (completion != null) completion.run();
+            } catch (Throwable throwable) {
+                Log.w(TAG, "Failed to write selected stream document", throwable);
+                runOnUiThread(() -> Toast.makeText(
+                        this, DOCUMENT_WRITE_FAILED, Toast.LENGTH_SHORT).show());
+            }
+        };
+        try {
+            if (!isFinishing() && !isDestroyed()) boundedDocumentExecutor.execute(write);
+        } catch (Throwable failure) {
+            Log.w(TAG, "Failed to start stream document write", failure);
+        }
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
     public void openBinaryDocument(String[] mimeTypes,
             GboardPatchesSettingsContract.BinaryDocumentConsumer documentConsumer) {
         openBinaryDocument(mimeTypes, Integer.MAX_VALUE, documentConsumer);
@@ -1376,6 +1444,42 @@ public final class GboardPatchesSettingsActivity extends Activity
         } catch (Throwable throwable) {
             pendingBinaryDocumentReader = null;
             Log.w(TAG, "Failed to launch binary document open picker", throwable);
+            Toast.makeText(this, DOCUMENT_PICKER_FAILED, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public void openBinaryDocuments(String[] mimeTypes, int maxBytes,
+            GboardPatchesSettingsContract.BinaryDocumentConsumer documentConsumer,
+            Runnable completion) {
+        if (documentConsumer == null) {
+            return;
+        }
+        if (maxBytes <= 0) throw new IllegalArgumentException("Document limit must be positive");
+        pendingBinaryDocumentsReader = documentConsumer;
+        pendingBinaryDocumentsCompletion = completion;
+        pendingBinaryDocumentsLimit = maxBytes;
+        String[] normalizedMimeTypes = normalizeMimeTypes(mimeTypes);
+        boolean imagesOnly = normalizedMimeTypes.length > 0;
+        for (String type : normalizedMimeTypes) imagesOnly &= type.startsWith("image/");
+        // GET_CONTENT behind a chooser lets the user pick Google Photos or a gallery app
+        // instead of always landing in the system file picker.
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT)
+                .addCategory(Intent.CATEGORY_OPENABLE)
+                .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                .setType(imagesOnly ? "image/*"
+                        : normalizedMimeTypes.length == 1 ? normalizedMimeTypes[0] : "*/*");
+        if (normalizedMimeTypes.length > 1) {
+            intent.putExtra(Intent.EXTRA_MIME_TYPES, normalizedMimeTypes);
+        }
+        try {
+            startActivityForResult(Intent.createChooser(intent, null),
+                    REQUEST_OPEN_BINARY_DOCUMENTS);
+        } catch (Throwable throwable) {
+            pendingBinaryDocumentsReader = null;
+            pendingBinaryDocumentsCompletion = null;
+            Log.w(TAG, "Failed to launch multi-document open picker", throwable);
             Toast.makeText(this, DOCUMENT_PICKER_FAILED, Toast.LENGTH_SHORT).show();
         }
     }
@@ -1535,6 +1639,14 @@ public final class GboardPatchesSettingsActivity extends Activity
         }
         if (requestCode == REQUEST_OPEN_BINARY_DOCUMENT) {
             handleOpenBinaryDocumentResult(resultCode, data);
+            return;
+        }
+        if (requestCode == REQUEST_OPEN_BINARY_DOCUMENTS) {
+            handleOpenBinaryDocumentsResult(resultCode, data);
+            return;
+        }
+        if (requestCode == REQUEST_CREATE_STREAM_DOCUMENT) {
+            handleCreateStreamDocumentResult(resultCode, data);
         }
     }
 
@@ -1912,6 +2024,68 @@ public final class GboardPatchesSettingsActivity extends Activity
                 reportBinaryDocumentReadFailure(failure);
             }
         }
+    }
+
+    private void handleOpenBinaryDocumentsResult(int resultCode, Intent data) {
+        GboardPatchesSettingsContract.BinaryDocumentConsumer reader =
+                pendingBinaryDocumentsReader;
+        Runnable completion = pendingBinaryDocumentsCompletion;
+        int maxBytes = pendingBinaryDocumentsLimit;
+        pendingBinaryDocumentsReader = null;
+        pendingBinaryDocumentsCompletion = null;
+        List<Uri> uris = selectedDocumentUris(data);
+        if (resultCode != RESULT_OK || uris.isEmpty() || reader == null) {
+            return;
+        }
+        Runnable read = () -> {
+            Throwable readFailure = null;
+            for (Uri uri : uris) {
+                if (Thread.currentThread().isInterrupted() || isFinishing() || isDestroyed()) return;
+                GboardPatchesSettingsContract.BinaryDocument document;
+                try {
+                    document = new GboardPatchesSettingsContract.BinaryDocument(
+                            queryDisplayName(uri), getContentResolver().getType(uri),
+                            readBinaryDocument(uri, maxBytes));
+                } catch (Throwable failure) {
+                    // One unreadable file must not drop the rest of the selection.
+                    readFailure = failure;
+                    continue;
+                }
+                try {
+                    reader.accept(document);
+                } catch (Throwable failure) {
+                    Log.w(TAG, "Selected document consumer failed", failure);
+                }
+            }
+            if (readFailure != null) reportBinaryDocumentReadFailure(readFailure);
+            if (completion != null) {
+                try { completion.run(); }
+                catch (Throwable failure) { Log.w(TAG, "Document import completion failed", failure); }
+            }
+        };
+        try {
+            if (!isFinishing() && !isDestroyed()) boundedDocumentExecutor.execute(read);
+        } catch (Throwable failure) {
+            reportBinaryDocumentReadFailure(failure);
+        }
+    }
+
+    private static List<Uri> selectedDocumentUris(Intent data) {
+        List<Uri> uris = new ArrayList<>();
+        if (data == null) {
+            return uris;
+        }
+        ClipData clipData = data.getClipData();
+        if (clipData != null) {
+            for (int index = 0; index < clipData.getItemCount(); index++) {
+                ClipData.Item item = clipData.getItemAt(index);
+                if (item != null && item.getUri() != null) uris.add(item.getUri());
+            }
+        }
+        if (uris.isEmpty() && data.getData() != null) {
+            uris.add(data.getData());
+        }
+        return uris;
     }
 
     private void reportBinaryDocumentReadFailure(Throwable failure) {
@@ -3242,8 +3416,21 @@ public final class GboardPatchesSettingsActivity extends Activity
     }
 
     private boolean navigateBack() {
+        return navigateBack(true);
+    }
+
+    /** Returns true when the activity should exit; a feature may keep the user on its screen. */
+    private boolean navigateBack(boolean askFeature) {
         GboardPatchesSettingsOrchestrator.State<GboardPatchesSettingsContract.Feature> state =
                 settingsOrchestrator.snapshot();
+        GboardPatchesSettingsContract.Feature current = state.getCurrent();
+        if (askFeature && current != null && !isSearching()) {
+            try {
+                if (current.onBackRequested(this)) return false;
+            } catch (Throwable failure) {
+                Log.w(TAG, "Feature back handler failed", failure);
+            }
+        }
         if (state.getCurrent() != null) {
             boolean returningToRoot = state.getBackStack().isEmpty();
             requestScrollPositionOnNextScreenApply(
