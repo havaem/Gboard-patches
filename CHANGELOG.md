@@ -1,4 +1,4 @@
-## Unreleased
+## [4.6.0-dev.1](https://github.com/havaem/Gboard-patches/compare/v4.5.0...v4.6.0-dev.1) (2026-11-27)
 
 ### ✨ New Features
 
