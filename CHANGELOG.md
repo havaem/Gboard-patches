@@ -1,3 +1,15 @@
+## [4.6.0-dev.2](https://github.com/havaem/Gboard-patches/compare/v4.6.0-dev.1...v4.6.0-dev.2) (2026-11-27)
+
+### 🐛 Bug Fixes
+
+* **Gboard / Text Expander:** shortcuts never expanded, because Gboard's Space key carries a space as its data and every Space press was skipped.
+* **Gboard / Clipboard Enhancements:** the **Search** button now shows outside edit mode, and works with the popup add-clip field that most keyboard layouts use.
+
+### 🐛 Sửa lỗi
+
+* **Gboard / Text Expander:** từ tắt không bao giờ được thay, vì phím Cách của Gboard mang theo dấu cách làm dữ liệu nên mọi lần nhấn Cách đều bị bỏ qua.
+* **Gboard / Clipboard Enhancements:** nút **Tìm kiếm** giờ hiện cả khi không ở chế độ chỉnh sửa, và hoạt động với ô thêm clip dạng popup mà hầu hết bố cục bàn phím dùng.
+
 ## [4.6.0-dev.1](https://github.com/havaem/Gboard-patches/compare/v4.5.0...v4.6.0-dev.1) (2026-11-27)
 
 ### ✨ New Features
